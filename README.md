@@ -12,4 +12,5 @@ It kind of works but:
 - [ ] Remove debug functions
 - [ ] Add at least small dictionary to the library
 - [ ] Add documentation (both code comments and how to use txt)
+- [ ] ? Improve spelling suggestions
 - [ ] ? Optimizations
