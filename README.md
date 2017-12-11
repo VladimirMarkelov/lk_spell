@@ -7,6 +7,7 @@ It kind of works but:
 3. Some function are to be removed - now they exist just for debugging
 
 ### TODO
+- [ ] Rename files to be more unique
 - [ ] Remove unused code
 - [ ] Eliminate duplicated code and make some functions smaller
 - [ ] Remove debug functions
