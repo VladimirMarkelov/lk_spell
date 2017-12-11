@@ -19,12 +19,14 @@ int tests_run = 0;
 int tests_fail = 0;
 
 const char* test_fileopen() {
+    FILE *ftxt = fopen("abcd.txt", "wb");
+    ut_assert("File created", ftxt != 0);
+    fputs("example\n", ftxt);
+    fputs("test2\n", ftxt);
+    fclose(ftxt);
+
     struct lk_file *f = lk_file_open("abcd.txt");
     ut_assert("ASCII NAME open", lk_file_is_valid(f));
-    lk_file_close(f);
-
-    f = lk_file_open("абвг.txt");
-    ut_assert("UTF8 NAME open", lk_file_is_valid(f));
     lk_file_close(f);
 
 #ifdef _WIN32
@@ -40,6 +42,17 @@ const char* test_fileopen() {
 }
 
 const char* test_fileread() {
+#ifdef _WIN32
+    FILE *ftxt = _wfopen(L"абвг.txt", L"wb");
+#else
+    FILE *ftxt = fopen("абвг.txt", "wb");
+#endif
+    ut_assert("File created", ftxt != 0);
+    fputs("test\n", ftxt);
+    fputs("example\n", ftxt);
+    fputs("1234", ftxt);
+    fclose(ftxt);
+
     char buf[64] = {0};
     lk_result r;
 

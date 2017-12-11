@@ -216,12 +216,60 @@ const char* test_lookup() {
     return 0;
 }
 
+const char* test_dict_load() {
+    FILE *f = fopen("lk.dict", "wb");
+    ut_assert("File created", f != 0);
+
+    fputs("-:n ktA\n", f);
+    fputs("S lapa milapa nilapa\n", f);
+    fputs("- kiŋ\n", f);
+    fputs("t zédún wa@pi @s\n", f);
+    fputs("t uya wa\% \%pi ~e\n", f);
+    fputs("S sápA ma~ sapápi kuni@\n", f);
+    fputs("-:a he\n", f);
+    fputs("s číkʼalA ma~\n", f);
+    fputs("s kóla makolÁ\n", f);
+    fputs("s kolá mákʼólA\n", f);
+    fclose(f);
+
+    struct lk_dictionary *dict = lk_dict_init();
+    lk_result r = lk_read_dictionary(dict, "lk.dict");
+    ut_assert("Reading dictionary", r == LK_OK);
+
+    int cnt = 0;
+    char **lookup;
+
+    lookup = lk_dict_exact_lookup(dict, "kunisape", NULL, &cnt);
+    ut_assert("Ascii match", cnt == 1 && lookup != NULL && strcmp(lookup[0], "kunísape") == 0);
+    lk_exact_lookup_free(lookup);
+
+    lookup = lk_dict_exact_lookup(dict, "zédun", NULL, &cnt);
+    ut_assert("Incorrect stress", cnt == 1 && lookup != NULL);
+    lk_exact_lookup_free(lookup);
+
+    lookup = lk_dict_exact_lookup(dict, "mačíkʼala", NULL, &cnt);
+    ut_assert("Glottal", cnt == 0 && lookup == NULL);
+    lk_exact_lookup_free(lookup);
+
+    lookup = lk_dict_exact_lookup(dict, "makolin", NULL, &cnt);
+    ut_assert("Multifit", cnt == 2 && lookup != NULL && (
+                ( strcmp(lookup[0], "makolíŋ") == 0 && strcmp(lookup[1], "mákʼóliŋ") == 0) ||
+                ( strcmp(lookup[1], "makolíŋ") == 0 && strcmp(lookup[0], "mákʼóliŋ") == 0)
+                ));
+    lk_exact_lookup_free(lookup);
+
+    lk_dict_close(dict);
+
+    return 0;
+}
+
 const char * run_all_test() {
     printf("=== Basic operations ===\n");
 
     ut_run_test("Dict basics", test_parse);
     ut_run_test("Dict search", test_search);
     ut_run_test("Dict suggestions", test_lookup);
+    ut_run_test("Dict load", test_dict_load);
 
     return 0;
 }
