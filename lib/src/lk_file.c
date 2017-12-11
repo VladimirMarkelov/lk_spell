@@ -5,8 +5,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
-#include "common.h"
-#include "filereader.h"
+#include "lk_common.h"
+#include "lk_file.h"
 
 struct lk_file {
     FILE* fh;

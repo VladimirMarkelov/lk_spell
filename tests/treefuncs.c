@@ -7,9 +7,9 @@
 #include <windows.h>
 #endif
 
-#include "common.h"
-#include "utf8proc.h"
-#include "suftree.h"
+#include <utf8proc.h>
+#include "lk_common.h"
+#include "lk_tree.h"
 
 int skip_failed_pkg = 1;
 #include "unittest.h"

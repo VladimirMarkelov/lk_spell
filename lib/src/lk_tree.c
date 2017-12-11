@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "utf8proc.h"
-#include "common.h"
-#include "suftree.h"
+#include <utf8proc.h>
+#include "lk_common.h"
+#include "lk_tree.h"
 
 struct lk_leaf {
     utf8proc_uint32_t c;

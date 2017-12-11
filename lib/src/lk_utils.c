@@ -6,9 +6,9 @@
 #include <windows.h>
 #endif
 
-#include "common.h"
-#include "wordutils.h"
-#include "utf8proc.h"
+#include <utf8proc.h>
+#include "lk_common.h"
+#include "lk_utils.h"
 
 /* utf8 char -> uint32
  * á - 225 * Á - 193

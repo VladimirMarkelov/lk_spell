@@ -7,10 +7,10 @@
 #include <windows.h>
 #endif
 
-#include "common.h"
+#include "lk_common.h"
 /* #include "utf8proc.h" */
-#include "filereader.h"
-#include "wordutils.h"
+#include "lk_file.h"
+#include "lk_utils.h"
 
 int skip_failed_pkg = 0;
 #include "unittest.h"

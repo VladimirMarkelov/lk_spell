@@ -7,13 +7,13 @@
 #include <windows.h>
 #endif
 
-#include "utf8proc.h"
+#include <utf8proc.h>
 
-#include "common.h"
-#include "dictionary.h"
-#include "filereader.h"
-#include "wordutils.h"
-#include "suftree.h"
+#include "lk_common.h"
+#include "lk_dict.h"
+#include "lk_file.h"
+#include "lk_utils.h"
+#include "lk_tree.h"
 
 #define LK_MAX_WORD_LEN 256
 
