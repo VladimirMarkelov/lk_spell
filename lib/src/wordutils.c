@@ -658,3 +658,161 @@ int lk_has_glottal_stop(const char *word) {
 
     return 0;
 }
+
+static int is_lk_char(utf8proc_uint32_t c) {
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == 700)
+        return 1;
+
+    size_t sz = sizeof(lk_low_case) / sizeof(lk_low_case[0]);
+    for (size_t idx = 0; idx < sz; idx++) {
+        if (lk_low_case[idx] == c)
+            return 1;
+    }
+
+    sz = sizeof(lk_up_case) / sizeof(lk_up_case[0]);
+    for (size_t idx = 0; idx < sz; idx++) {
+        if (lk_up_case[idx] == c)
+            return 1;
+    }
+
+    return 0;
+}
+
+#define STATE_SKIP_WHITE 0
+#define STATE_GOBBLE 1
+#define STATE_QUOTE 2
+#define STATE_DONE 10
+const char* lk_word_begin(const char *str, size_t pos) {
+    if (str == NULL || pos >= strlen(str))
+        return NULL;
+
+    const char *wbegin = NULL;
+    const char *idx = str + pos, *save = NULL;
+    const char *begin = idx;
+    utf8proc_uint8_t *usrc;
+    utf8proc_int32_t cp;
+
+    if (pos == 0) {
+        usrc = (utf8proc_uint8_t *)idx;
+        utf8proc_iterate(usrc, -1, &cp);
+        if (cp == -1)
+            return NULL;
+
+        return is_lk_char(cp) ? str : NULL;
+    }
+
+    int state = STATE_SKIP_WHITE;
+    while (idx != str) {
+        if ((((unsigned char)*idx) & 0xC0) == 0x80) {
+            --idx;
+            continue;
+        }
+
+        usrc = (utf8proc_uint8_t *)idx;
+        utf8proc_iterate(usrc, -1, &cp);
+        if (cp == -1)
+            return NULL;
+
+        int is_lk = is_lk_char(cp);
+        int is_quote = (cp == '\'' || cp == '`');
+
+        if (is_lk) {
+            if (state == STATE_SKIP_WHITE || state == STATE_QUOTE) {
+                state = STATE_GOBBLE;
+            }
+            save = idx--;
+            if (idx == str) {
+                usrc = (utf8proc_uint8_t *)idx;
+                utf8proc_iterate(usrc, -1, &cp);
+                if (! is_lk_char(cp))
+                    state = STATE_DONE;
+            }
+        } else if (is_quote)  {
+            if (state == STATE_GOBBLE) {
+                state = STATE_QUOTE;
+            } else if (state == STATE_QUOTE) {
+                state = STATE_DONE;
+                break;
+            }
+            --idx;
+            if (idx == str) {
+                if (save != NULL && begin != save)
+                    state = STATE_DONE;
+                else
+                    state = STATE_SKIP_WHITE;
+            }
+        } else {
+            if (state == STATE_GOBBLE) {
+                state = STATE_DONE;
+                break;
+            }
+            --idx;
+        }
+    }
+
+    if (state == STATE_DONE)
+        return save;
+    if (state == STATE_GOBBLE && idx == str)
+        return idx;
+
+    return NULL;
+}
+
+const char* lk_next_word(const char *str, size_t *len) {
+    utf8proc_int32_t cp;
+    utf8proc_uint8_t *usrc = (utf8proc_uint8_t *)str, *save;
+    size_t cplen;
+    const char *wstart = NULL;
+
+    if (len)
+        *len = 0;
+
+    int state = STATE_SKIP_WHITE;
+    while (*usrc) {
+        if (state == STATE_SKIP_WHITE && (((unsigned char)*usrc) & 0xC0) == 0x80) {
+            ++usrc;
+            continue;
+        }
+
+        cplen = utf8proc_iterate(usrc, -1, &cp);
+        if (cp == -1)
+            return NULL;
+
+        int is_lk = is_lk_char(cp);
+        int is_quote = (cp == '\'' || cp == '`');
+
+        if (is_lk) {
+            if (state == STATE_SKIP_WHITE) {
+                wstart = (const char *)usrc;
+                state = STATE_GOBBLE;
+            } else if (state == STATE_QUOTE) {
+                state = STATE_GOBBLE;
+            }
+        } else if (is_quote) {
+            if (state == STATE_GOBBLE) {
+                state = STATE_QUOTE;
+                save = usrc;
+            } else if (state == STATE_QUOTE) {
+                usrc = save;
+                break;
+            }
+        } else {
+            if (state == STATE_GOBBLE) {
+                break;
+            } else if (state == STATE_QUOTE) {
+                usrc = save;
+                break;
+            }
+        }
+
+        usrc += cplen;
+    }
+
+    if (!wstart)
+        return NULL;
+
+    if (len)
+        *len = (const char*)usrc - wstart;
+
+    return wstart;
+}

@@ -387,6 +387,98 @@ const char* test_remove_stop() {
     return 0;
 }
 
+const char* test_word_begin() {
+    const char *pure_ascii = "some example string";
+    const char *ascii = "'some' ex'ample s`tri'ng";
+    const char *utf = "číkʼala mákiŋ";
+
+    const char *w = lk_word_begin(pure_ascii, 30);
+    ut_assert("Too big", w == NULL);
+    w = lk_word_begin(pure_ascii, 0);
+    ut_assert("Pure Ascii String start", w != NULL && *w == 's');
+    w = lk_word_begin(pure_ascii, 2);
+    ut_assert("Pure Ascii word #1.1", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(pure_ascii, 3);
+    ut_assert("Pure Ascii word #1.2", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(pure_ascii, 4);
+    ut_assert("Pure Ascii word #1.3", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(pure_ascii, 5);
+    ut_assert("Pure Ascii word #2.1", w != NULL && *w == 'e' && *(w+1) == 'x');
+
+    w = lk_word_begin(ascii, 0);
+    ut_assert("Ascii String start", w == NULL);
+    w = lk_word_begin(ascii, 3);
+    ut_assert("Ascii word #1.2", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(ascii, 4);
+    ut_assert("Ascii word #1.3", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(ascii, 5);
+    ut_assert("Ascii word #1.4", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(ascii, 6);
+    ut_assert("Ascii word #1.5", w != NULL && *w == 's' && *(w+1) == 'o');
+    w = lk_word_begin(ascii, 10);
+    ut_assert("Ascii word #2.1", w != NULL && *w == 'e' && *(w+1) == 'x');
+    w = lk_word_begin(ascii, 23);
+    ut_assert("Ascii word #3.1", w != NULL && *w == 's' && *(w+1) == '`');
+
+    w = lk_word_begin(utf, 0);
+    ut_assert("UTF8 String start", w == utf);
+    w = lk_word_begin(utf, 2);
+    ut_assert("UTF8 word #1.1", w == utf);
+    w = lk_word_begin(utf, 3);
+    ut_assert("UTF8 word #1.2", w == utf);
+    w = lk_word_begin(utf, 4);
+    ut_assert("UTF8 word #1.3", w == utf);
+    w = lk_word_begin(utf, 6);
+    ut_assert("UTF8 word #1.4", w == utf);
+    w = lk_word_begin(utf, 8);
+    ut_assert("UTF8 word #1.5", w == utf);
+    w = lk_word_begin(utf, 12);
+    ut_assert("UTF8 word #2.1", w != NULL && *w == 'm');
+    w = lk_word_begin(utf, 15);
+    ut_assert("UTF8 word #2.2", w != NULL && *w == 'm');
+
+    return 0;
+}
+
+const char* test_next_word() {
+    const char *pure_ascii = "some example string";
+    const char *ascii = "'some' ex'ample s`tri'ng";
+    const char *utf = "číkʼala mákiŋ";
+
+    const char *w;
+    size_t wlen = 0;
+    w = lk_next_word(pure_ascii, &wlen);
+    ut_assert("ASCII pure - word #1.1", w == pure_ascii && wlen == 4);
+    w = lk_next_word(w+wlen-1, &wlen);
+    ut_assert("ASCII pure - word #1.2", w == w && wlen == 1);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII pure - word #2.1", w == pure_ascii+5 && wlen == 7);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII pure - word #3.1", w == pure_ascii+5+8 && wlen == 6);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII pure - word #4.1", w == NULL);
+
+    w = lk_next_word(ascii, &wlen);
+    ut_assert("ASCII - word #1.1", w == ascii+1 && wlen == 4);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII - word #2.1", w == ascii+7 && wlen == 8);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII - word #3.1", w == ascii+7+9 && wlen == 8);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("ASCII - word #4.1", w == NULL);
+
+    w = lk_next_word(utf, &wlen);
+    ut_assert("UTF - word #1.1", w == utf && wlen == 10);
+    w = lk_next_word(utf+1, &wlen);
+    ut_assert("UTF - word #1.2", w == utf+2 && wlen == 8);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("UTF - word #2.1", w == utf+11 && wlen == 7);
+    w = lk_next_word(w+wlen, &wlen);
+    ut_assert("UTF - word #3.1", w == NULL);
+
+    return 0;
+}
+
 const char * run_all_test() {
     printf("=== Basic operations ===\n");
 
@@ -404,6 +496,8 @@ const char * run_all_test() {
     ut_run_test("first stressed", test_first_stressed);
     ut_run_test("put stress", test_put_stress);
     ut_run_test("remove glottal stop", test_remove_stop);
+    ut_run_test("begin of word", test_word_begin);
+    ut_run_test("next word", test_next_word);
 
     /*
     char *cc = "áóéíúÁÓÉÍÚŋŊčČžŽȟȞǧǦšŠ";

@@ -17,4 +17,6 @@ lk_result lk_remove_glottal_stop(const char *word, char *out, size_t out_sz);
 int lk_has_glottal_stop(const char *word);
 
 int lk_ends_with(const char *orig, const char *cmp);
+const char* lk_word_begin(const char *str, size_t pos);
+const char* lk_next_word(const char *str, size_t *len);
 #endif
