@@ -2,16 +2,40 @@
 --solution "lkchecker"
 --   configurations { "Release" }
 
+--#!lua
+newoption {
+    trigger = "utf8proc_inc",
+    description = "Path to directory containing utf8proc headers",
+    value = "path"
+}
+
+--#!lua
+newoption {
+    trigger = "utf8proc_lib",
+    description = "utf8proc library path",
+    value = "path"
+}
+
 project "lkchecker"
    kind "SharedLib"
    language "C"
 
-   files { "**.h", "src/utf8proc.c", "src/filereader.c",
-   		   "src/dictionary.c", "src/wordutils.c", "src/suftree.c" }
-   includedirs { "./include" }
+   files { "**.h", "**.c" }
+
+   if not _OPTIONS["utf8proc_inc"] then
+       includedirs { "include" }
+   else
+       includedirs { _OPTIONS["utf8proc_inc"], "include" }
+   end
+   if _OPTIONS["utf8proc_lib"] then
+       libdirs { _OPTIONS["utf8proc_lib"] }
+   end
+
    objdir "../obj/lkchecker"
    targetdir "../out/"
 
    configurations "Release"
       defines { "NDEBUG" }
       flags { "Optimize" }
+
+   links { "utf8proc" }

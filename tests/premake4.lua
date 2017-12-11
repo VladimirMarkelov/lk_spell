@@ -2,6 +2,20 @@
 --solution "lkchecker"
 --   configurations { "Release" }
 
+--#!lua
+newoption {
+    trigger = "utf8proc_inc",
+    description = "Path to directory containing utf8proc headers",
+    value = "path"
+}
+
+--#!lua
+newoption {
+    trigger = "utf8proc_lib",
+    description = "utf8proc library path",
+    value = "path"
+}
+
 project "functions"
    kind "ConsoleApp"
    language "C"
@@ -33,10 +47,19 @@ project "treefuncs"
    language "C"
 
    files { "unittest.h", "treefuncs.c" }
-   includedirs { "../lib/include" }
+
+   if not _OPTIONS["utf8proc_inc"] then
+       includedirs { "../lib/include" }
+   else
+       includedirs { _OPTIONS["utf8proc_inc"], "../lib/include" }
+   end
+   if _OPTIONS["utf8proc_lib"] then
+       libdirs { _OPTIONS["utf8proc_lib"] }
+   end
+
    objdir "../obj/tests"
    targetdir "../out/"
-   links { "lkchecker" }
+   links { "utf8proc", "lkchecker" }
 
    configurations "Release"
       defines {  }
