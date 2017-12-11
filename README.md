@@ -14,5 +14,6 @@ It kind of works but:
 - [ ] Add at least small dictionary to the library
 - [ ] Add documentation (both code comments and how to use txt)
 - [ ] Use utf8proc as external library
+- [ ] Test on Linux distribution
 - [ ] ? Improve spelling suggestions
 - [ ] ? Optimizations
