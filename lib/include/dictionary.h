@@ -1,6 +1,10 @@
 #ifndef LKCHECKER_DICTIONARY
 #define LKCHECKER_DICTIONARY
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lk_dictionary;
 struct lk_word;
 struct lk_word_ptr;
@@ -23,4 +27,9 @@ const struct lk_word_ptr* lk_dict_find_word(const struct lk_dictionary *dict, co
 lk_ablaut lk_dict_check_ablaut(const struct lk_dictionary *dict, const char *word);
 void _print_dict(const struct lk_dictionary *dict);
 void _print_word(const struct lk_word *w);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

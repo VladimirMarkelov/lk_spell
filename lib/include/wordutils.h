@@ -1,6 +1,10 @@
 #ifndef LKCHECKER_WORDUTILS
 #define LKCHECKER_WORDUTILS
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 lk_result lk_to_low_case(const char *word, char *out, size_t out_sz);
 int lk_is_valid_word(const char *word);
 int lk_has_ablaut(const char *word);
@@ -19,4 +23,9 @@ int lk_has_glottal_stop(const char *word);
 int lk_ends_with(const char *orig, const char *cmp);
 const char* lk_word_begin(const char *str, size_t pos);
 const char* lk_next_word(const char *str, size_t *len);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

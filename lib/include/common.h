@@ -1,6 +1,10 @@
 #ifndef LKCHECKER_COMMON
 #define LKCHECKER_COMMON
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BUFFER_SIZE 65536
 #define LK_STRESS_DEFAULT 1
 
@@ -102,5 +106,10 @@ typedef enum {
     LK_ABLAUT_E,
     LK_ABLAUT_N,
 } lk_ablaut;
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
