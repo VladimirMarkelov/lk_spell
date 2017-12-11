@@ -34,7 +34,7 @@ project "lkchecker"
    objdir "../obj/lkchecker"
    targetdir "../out/"
 
-   configurations "Release"
+   configuration "Release"
       defines { "NDEBUG" }
       flags { "Optimize" }
 

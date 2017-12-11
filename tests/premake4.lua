@@ -26,9 +26,6 @@ project "functions"
    targetdir "../out/"
    links { "lkchecker" }
 
-   configurations "Release"
-      defines {  }
-
 project "dictfuncs"
    kind "ConsoleApp"
    language "C"
@@ -38,9 +35,6 @@ project "dictfuncs"
    objdir "../obj/tests"
    targetdir "../out/"
    links { "lkchecker" }
-
-   configurations "Release"
-      defines {  }
 
 project "treefuncs"
    kind "ConsoleApp"
@@ -60,6 +54,3 @@ project "treefuncs"
    objdir "../obj/tests"
    targetdir "../out/"
    links { "utf8proc", "lkchecker" }
-
-   configurations "Release"
-      defines {  }
