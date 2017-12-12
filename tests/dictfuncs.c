@@ -55,8 +55,6 @@ const char* test_parse() {
     r = lk_parse_word("t uya wa\% \%pi ~e", dict);
     ut_assert("Word #7 - percent parsed", r == LK_OK && lk_word_count(dict) == 31);
 
-    /* _print_dict(dict); */
-
     lk_dict_close(dict);
 
     return 0;
@@ -153,8 +151,6 @@ const char* test_lookup() {
     lk_exact_lookup_free(lookup);
 
     lookup = lk_dict_exact_lookup(dict, "sapá", NULL, &cnt);
-    /* printf("Found %d = %p\n", cnt, lookup); */
-    /* if (lookup) { for (size_t ii=0; ii<cnt; ++ii) printf("   + [%s]\n", lookup[ii]); }; */
     ut_assert("Incorrect stress #1", cnt == 1 && lookup != NULL);
     lk_exact_lookup_free(lookup);
 
@@ -163,8 +159,6 @@ const char* test_lookup() {
     lk_exact_lookup_free(lookup);
 
     lookup = lk_dict_exact_lookup(dict, "sápa", ".", &cnt);
-    /* printf("Found %d = %p\n", cnt, lookup); */
-    /* if (lookup) { for (size_t ii=0; ii<cnt; ++ii) printf("   + [%s]\n", lookup[ii]); }; */
     ut_assert("Incorrect ablaut form #1", cnt == 3 && lookup != NULL
             && strcmp(lookup[1], "-") == 0
             && strcmp(lookup[2], "sápe") == 0
@@ -172,8 +166,6 @@ const char* test_lookup() {
     lk_exact_lookup_free(lookup);
 
     lookup = lk_dict_exact_lookup(dict, "sapá", ".", &cnt);
-    /* printf("Found %d = %p\n", cnt, lookup); */
-    /* if (lookup) { for (size_t ii=0; ii<cnt; ++ii) printf("   + [%s]\n", lookup[ii]); }; */
     ut_assert("Incorrect ablaut and stress form #1", cnt == 3 && lookup != NULL
             && strcmp(lookup[1], "-") == 0
             && strcmp(lookup[2], "sápe") == 0

@@ -512,18 +512,6 @@ const char * run_all_test() {
     ut_run_test("begin of word", test_word_begin);
     ut_run_test("next word", test_next_word);
 
-    /*
-    char *cc = "áóéíúÁÓÉÍÚŋŊčČžŽȟȞǧǦšŠ";
-    utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)cc;
-    utf8proc_int32_t cp;
-    size_t len;
-    for (int i=0; i < 22; i++) {
-        len = utf8proc_iterate(usrc, -1, &cp);
-        usrc += len;
-        printf("%d - [%d] - %u\n", i, (int)len, cp);
-    }
-    */
-
     return 0;
 }
 

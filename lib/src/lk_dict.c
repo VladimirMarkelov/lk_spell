@@ -45,10 +45,6 @@ struct lk_word_form {
     struct lk_word_form *next;
 };
 
-/*
- * Internal functions
- */
-
 static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) {
     int is_ab_stressed = lk_is_ablaut_stressed(word);
     utf8proc_int32_t cp;
@@ -105,12 +101,6 @@ static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) 
             *udst = '\0';
             break;
     }
-}
-
-static int is_verb(lk_word_type wt) {
-    int low = wt & 0xFF;
-    return (low == LK_STATIC_VERB || low == LK_TRANS_VERB
-        || low == LK_INTRANS_VERB);
 }
 
 const struct lk_word_ptr* lk_dict_find_word(const struct lk_dictionary *dict, const char *word) {
@@ -859,10 +849,6 @@ lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
     return LK_OK;
 }
 
-/*
- * External functions
- */
-
 int lk_is_dict_valid(const struct lk_dictionary *dict) {
     if (dict == NULL)
         return 0;
@@ -953,44 +939,3 @@ lk_result lk_read_dictionary(struct lk_dictionary *dict, const char *path) {
     return res;
 }
 
-void _print_dict(const struct lk_dictionary *dict) {
-    if (!lk_is_dict_valid(dict)) {
-        printf("Invalid dictionary\n");
-        return;
-    }
-
-    const struct lk_ablauting *ab = dict->ab_head;
-    if (ab != NULL)
-        printf("Follows ablaut:\n");
-    while (ab != NULL) {
-        printf("    %s - %s\n", ab->word->word,
-            ab->ablaut == LK_ABLAUT_0 ? "NO ABLAUT!!!!"
-                : ab->ablaut == LK_ABLAUT_A ? "a-Ablaut"
-                : ab->ablaut == LK_ABLAUT_E ? "e-Ablaut"
-                : ab->ablaut == LK_ABLAUT_N ? "in-Ablaut"
-                : "Invalid Ablaut!!!");
-        ab = ab->next;
-    }
-
-    const struct lk_word *w = dict->head;
-    printf("Word list:\n");
-    while (w != NULL) {
-        if (w->contracted != NULL)
-            printf("    %s [%c] - cont. %s\n", w->word, w->wtype, w->contracted);
-        else
-            printf("    %s [%c]\n", w->word, w->wtype);
-        w = w->next;
-    }
-}
-
-void _print_word(const struct lk_word *w) {
-    if (w == NULL) {
-        printf("INVALID WORD");
-        return;
-    }
-
-    if (w->contracted != NULL)
-        printf("    %s [%c] - cont. %s\n", w->word, w->wtype, w->contracted);
-    else
-        printf("    %s [%c]\n", w->word, w->wtype);
-}

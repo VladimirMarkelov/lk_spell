@@ -41,9 +41,6 @@ const utf8proc_int32_t lk_low_ascii[] = {
     'a', 'o', 'e', 'i', 'u', 'n', 'c', 'z', 'h', 'g', 's',
 };
 
-/*
- * Internal functions
- */
 typedef utf8proc_int32_t (*ustr_func) (utf8proc_int32_t);
 
 static size_t cp_length(utf8proc_uint32_t cp) {
@@ -99,30 +96,6 @@ static lk_result ustr_lowcase(char *src) {
     return process_ustr(src, utf8proc_tolower);
 }
 
-/*
-static size_t ustr_count(const char *str) {
-    if (str == NULL || *str == '\0') {
-        return 0;
-    }
-
-    size_t len = 0, sz;
-    utf8proc_uint8_t *tmp = (utf8proc_uint8_t*)str;
-    utf8proc_int32_t cp;
-    while (*tmp) {
-        sz = utf8proc_iterate(tmp, -1, &cp);
-
-        if (cp == -1) {
-            return (size_t)-1;
-        }
-
-        tmp += sz;
-        len++;
-    }
-
-    return len;
-}
-*/
-
 int lk_ends_with(const char *orig, const char *cmp) {
     if (orig == NULL && cmp == NULL) {
         return 1;
@@ -141,109 +114,6 @@ int lk_ends_with(const char *orig, const char *cmp) {
     const char *from = orig + olen - clen;
     return strcmp(from, cmp) == 0 ? 1 : 0;
 }
-
-/*
-static lk_result ustr_translate(const char *src, char *dst, const char *what, const char *with) {
-    if (dst == NULL)
-        return LK_BUFFER_SMALL;
-
-    if (src == NULL || *src == '\0') {
-        *dst = '\0';
-        return LK_OK;
-    }
-
-    size_t whatlen = ustr_count(what);
-    if (whatlen == (size_t)-1) {
-        return LK_INVALID_ARG;
-    }
-    size_t withlen = ustr_count(with);
-    if (withlen == (size_t)-1) {
-        return LK_INVALID_ARG;
-    }
-
-    utf8proc_int32_t *whatarr = (utf8proc_int32_t *)malloc(sizeof(utf8proc_int32_t) * whatlen);
-    if (whatarr == NULL) {
-        return LK_OUT_OF_MEMORY;
-    }
-    utf8proc_int32_t *witharr = (utf8proc_int32_t *)malloc(sizeof(utf8proc_int32_t) * whatlen);
-    if (witharr == NULL) {
-        free(whatarr);
-        return LK_OUT_OF_MEMORY;
-    }
-
-    utf8proc_uint8_t *utmp = (utf8proc_uint8_t*)what;
-    utf8proc_int32_t cp, dcp;
-    size_t idx = 0, len, dlen;
-
-    for (idx = 0; idx < whatlen; ++idx) {
-        len = utf8proc_iterate(utmp, -1, &cp);
-
-        if (cp == -1) {
-            free(whatarr);
-            free(witharr);
-            return LK_INVALID_ARG;
-        }
-
-        whatarr[idx] = cp;
-        utmp += len;
-    }
-
-    utmp = (utf8proc_uint8_t*)with;
-    for (idx = 0; idx < whatlen; ++idx) {
-        if (*utmp == '\0') {
-            witharr[idx] = 0;
-            continue;
-        }
-
-        len = utf8proc_iterate(utmp, -1, &cp);
-
-        if (cp == -1) {
-            free(whatarr);
-            free(witharr);
-            return LK_INVALID_ARG;
-        }
-
-        witharr[idx] = cp;
-        utmp += len;
-    }
-
-    size_t used = 0;
-    utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)src;
-    utf8proc_uint8_t *udst = (utf8proc_uint8_t*)dst;
-
-    while (*usrc) {
-        len = utf8proc_iterate(usrc, -1, &cp);
-
-        if (cp == -1) {
-            free(whatarr);
-            free(witharr);
-            return LK_INVALID_ARG;
-        }
-
-        dcp = cp;
-        for (size_t i = 0; i < whatlen; ++i) {
-            if (whatarr[i] == cp) {
-                dcp = witharr[i];
-                break;
-            }
-        }
-
-        if (udst != NULL && dcp != 0) {
-            dlen = utf8proc_encode_char(dcp, udst);
-            udst += dlen;
-        }
-
-        used += cp_length(dcp);
-        usrc += len;
-    }
-
-    *udst = '\0';
-
-    free(whatarr);
-    free(witharr);
-    return LK_OK;
-}
-*/
 
 lk_result fix_glottal_stop(const char *word, char *out, size_t out_sz) {
     size_t len = 0;
@@ -276,7 +146,6 @@ lk_result fix_glottal_stop(const char *word, char *out, size_t out_sz) {
     return LK_OK;
 }
 
-/* External API */
 lk_result lk_to_low_case(const char *word, char *out, size_t out_sz) {
     if (word == NULL)
         return LK_INVALID_ARG;
@@ -678,10 +547,6 @@ static int is_lk_char(utf8proc_uint32_t c) {
     return 0;
 }
 
-#define STATE_SKIP_WHITE 0
-#define STATE_GOBBLE 1
-#define STATE_QUOTE 2
-#define STATE_DONE 10
 const char* lk_word_begin(const char *str, size_t pos) {
     if (str == NULL || pos >= strlen(str))
         return NULL;
@@ -701,7 +566,7 @@ const char* lk_word_begin(const char *str, size_t pos) {
         return is_lk_char(cp) ? str : NULL;
     }
 
-    int state = STATE_SKIP_WHITE;
+    lk_state state = LK_STATE_SKIP_WHITE;
     while (idx != str) {
         if ((((unsigned char)*idx) & 0xC0) == 0x80) {
             --idx;
@@ -717,42 +582,42 @@ const char* lk_word_begin(const char *str, size_t pos) {
         int is_quote = (cp == '\'' || cp == '`');
 
         if (is_lk) {
-            if (state == STATE_SKIP_WHITE || state == STATE_QUOTE) {
-                state = STATE_GOBBLE;
+            if (state == LK_STATE_SKIP_WHITE || state == LK_STATE_QUOTE) {
+                state = LK_STATE_GOBBLE;
             }
             save = idx--;
             if (idx == str) {
                 usrc = (utf8proc_uint8_t *)idx;
                 utf8proc_iterate(usrc, -1, &cp);
                 if (! is_lk_char(cp))
-                    state = STATE_DONE;
+                    state = LK_STATE_DONE;
             }
         } else if (is_quote)  {
-            if (state == STATE_GOBBLE) {
-                state = STATE_QUOTE;
-            } else if (state == STATE_QUOTE) {
-                state = STATE_DONE;
+            if (state == LK_STATE_GOBBLE) {
+                state = LK_STATE_QUOTE;
+            } else if (state == LK_STATE_QUOTE) {
+                state = LK_STATE_DONE;
                 break;
             }
             --idx;
             if (idx == str) {
                 if (save != NULL && begin != save)
-                    state = STATE_DONE;
+                    state = LK_STATE_DONE;
                 else
-                    state = STATE_SKIP_WHITE;
+                    state = LK_STATE_SKIP_WHITE;
             }
         } else {
-            if (state == STATE_GOBBLE) {
-                state = STATE_DONE;
+            if (state == LK_STATE_GOBBLE) {
+                state = LK_STATE_DONE;
                 break;
             }
             --idx;
         }
     }
 
-    if (state == STATE_DONE)
+    if (state == LK_STATE_DONE)
         return save;
-    if (state == STATE_GOBBLE && idx == str)
+    if (state == LK_STATE_GOBBLE && idx == str)
         return idx;
 
     return NULL;
@@ -767,9 +632,9 @@ const char* lk_next_word(const char *str, size_t *len) {
     if (len)
         *len = 0;
 
-    int state = STATE_SKIP_WHITE;
+    lk_state state = LK_STATE_SKIP_WHITE;
     while (*usrc) {
-        if (state == STATE_SKIP_WHITE && (((unsigned char)*usrc) & 0xC0) == 0x80) {
+        if (state == LK_STATE_SKIP_WHITE && (((unsigned char)*usrc) & 0xC0) == 0x80) {
             ++usrc;
             continue;
         }
@@ -782,24 +647,24 @@ const char* lk_next_word(const char *str, size_t *len) {
         int is_quote = (cp == '\'' || cp == '`');
 
         if (is_lk) {
-            if (state == STATE_SKIP_WHITE) {
+            if (state == LK_STATE_SKIP_WHITE) {
                 wstart = (const char *)usrc;
-                state = STATE_GOBBLE;
-            } else if (state == STATE_QUOTE) {
-                state = STATE_GOBBLE;
+                state = LK_STATE_GOBBLE;
+            } else if (state == LK_STATE_QUOTE) {
+                state = LK_STATE_GOBBLE;
             }
         } else if (is_quote) {
-            if (state == STATE_GOBBLE) {
-                state = STATE_QUOTE;
+            if (state == LK_STATE_GOBBLE) {
+                state = LK_STATE_QUOTE;
                 save = usrc;
-            } else if (state == STATE_QUOTE) {
+            } else if (state == LK_STATE_QUOTE) {
                 usrc = save;
                 break;
             }
         } else {
-            if (state == STATE_GOBBLE) {
+            if (state == LK_STATE_GOBBLE) {
                 break;
-            } else if (state == STATE_QUOTE) {
+            } else if (state == LK_STATE_QUOTE) {
                 usrc = save;
                 break;
             }

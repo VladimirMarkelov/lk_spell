@@ -18,19 +18,12 @@ int tests_run = 0;
 int tests_fail = 0;
 
 struct lk_word {
-    struct lk_word* next;
+    struct lk_word *base;
+    struct lk_word *next;
 
     char *word;
-    int wt;
-    int vt;
-    int ablaut;
-    int ct;
-    char **conj;
-    char *cont;
-    lk_conjugation conj_form;
-    /* char *base; */
-    char conj_count;
-    char ablauted;
+    char *contracted;
+    int wtype;
 };
 
 struct lk_leaf {

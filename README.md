@@ -9,7 +9,7 @@ It kind of works but:
 ### TODO
 - [ ] Remove unused code
 - [ ] Eliminate duplicated code and make some functions smaller
-- [ ] Remove debug functions
+- [x] Remove debug functions
 - [ ] Add at least small dictionary to the library
 - [ ] Add documentation (both code comments and how to use txt)
 - [x] Use utf8proc as external library
