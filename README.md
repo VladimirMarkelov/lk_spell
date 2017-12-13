@@ -8,8 +8,7 @@ It kind of works but:
 
 ### TODO
 - [x] Remove unused code
-- [ ] Rename static functions to distinguish from external
-- [ ] Eliminate duplicated code and make some functions smaller
+- [x] Eliminate duplicated code and make some functions smaller
 - [x] Remove debug functions
 - [ ] Add at least small dictionary to the library
 - [ ] Add documentation (both code comments and how to use txt)

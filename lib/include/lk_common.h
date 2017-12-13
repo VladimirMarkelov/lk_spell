@@ -47,6 +47,31 @@ typedef enum {
     LK_STATE_DONE,
 } lk_state;
 
+#define LK_A_UP 193
+#define LK_A_LOW 225
+#define LK_O_UP 211
+#define LK_O_LOW 243
+#define LK_E_UP 201
+#define LK_E_LOW 233
+#define LK_I_UP 205
+#define LK_I_LOW 237
+#define LK_U_UP 218
+#define LK_U_LOW 250
+
+#define LK_N_UP 330
+#define LK_N_LOW 331
+#define LK_C_UP 268
+#define LK_C_LOW 269
+#define LK_Z_UP 381
+#define LK_Z_LOW 382
+#define LK_H_UP 542
+#define LK_H_LOW 543
+#define LK_G_UP 486
+#define LK_G_LOW 487
+#define LK_S_UP 352
+#define LK_S_LOW 353
+#define LK_QUOTE 700
+
 #ifdef __cplusplus
 }
 #endif

@@ -28,10 +28,12 @@
 #define VOWEL_COUNT 5
 /* vowels must go first in lk_low_case & lk_up_case arrays */
 const utf8proc_uint32_t lk_low_case[] = {
-    225, 243, 233, 237, 250, 331, 269, 382, 543, 487, 353,
+    LK_A_LOW, LK_O_LOW, LK_E_LOW, LK_I_LOW, LK_U_LOW,
+    LK_N_LOW, LK_C_LOW, LK_Z_LOW, LK_H_LOW, LK_G_LOW, LK_S_LOW,
 };
 const utf8proc_uint32_t lk_up_case[] = {
-    193, 211, 201, 205, 218, 330, 268, 381, 542, 486, 352,
+    LK_A_UP, LK_O_UP, LK_E_UP, LK_I_UP, LK_U_UP,
+    LK_N_UP, LK_C_UP, LK_Z_UP, LK_H_UP, LK_G_UP, LK_S_UP,
 };
 /*
  * to convert lk_low_case to ascii symbol. Length must equal length of lk_low_case
@@ -42,6 +44,36 @@ const utf8proc_int32_t lk_low_ascii[] = {
 };
 
 typedef utf8proc_int32_t (*ustr_func) (utf8proc_int32_t);
+
+static int lk_is_stressed_vowel(utf8proc_uint32_t cp) {
+    return (cp == LK_A_LOW || cp == LK_E_LOW || cp == LK_I_LOW
+        || cp == LK_U_LOW || cp == LK_O_LOW);
+}
+
+static int lk_is_unstressed_vowel(utf8proc_uint32_t cp) {
+    return (cp == 'a' || cp == 'e'
+        || cp == 'i' || cp == 'o' || cp == 'u');
+}
+
+static int lk_is_vowel(utf8proc_uint32_t cp) {
+    return lk_is_unstressed_vowel(cp) || lk_is_stressed_vowel(cp);
+}
+
+static utf8proc_uint32_t lk_unstress_to_stress(utf8proc_uint32_t cp) {
+    switch (cp) {
+        case 'a':
+            return LK_A_LOW;
+        case 'e':
+            return LK_E_LOW;
+        case 'i':
+            return LK_I_LOW;
+        case 'o':
+            return LK_O_LOW;
+        case 'u':
+            return LK_U_LOW;
+    }
+    return cp;
+}
 
 static size_t cp_length(utf8proc_uint32_t cp) {
     if (cp < 0) {
@@ -129,7 +161,7 @@ static lk_result fix_glottal_stop(const char *word, char *out, size_t out_sz) {
         }
 
         if (cp == '\'' || cp == '`')
-            cp = 700;
+            cp = LK_QUOTE;
         usrc += len;
 
         len = cp_length(cp);
@@ -210,8 +242,7 @@ int lk_stressed_vowels_no(const char *word) {
             return 0;
         }
 
-        if (cp == 225 || cp == 243 || cp == 233
-            || cp == 237 || cp == 250)
+        if (lk_is_stressed_vowel(cp))
             cnt++;
 
         uw += len;
@@ -237,10 +268,7 @@ int lk_vowels_no(const char *word) {
             return 0;
         }
 
-        if (cp == 225 || cp == 243 || cp == 233
-            || cp == 237 || cp == 250 || cp == 'a'
-            || cp == 'e' || cp == 'i' || cp == 'o'
-            || cp == 'u')
+        if (lk_is_vowel(cp))
             cnt++;
 
         uw += len;
@@ -282,7 +310,7 @@ lk_result lk_to_ascii(const char *word, char *out, size_t out_sz) {
     while (*usrc) {
         len = utf8proc_iterate(usrc, -1, &cp);
 
-        if (cp == '`' || cp == 700)
+        if (cp == '`' || cp == LK_QUOTE)
             cp = '\'';
         else {
             for (size_t idx = 0; idx < sizeof(lk_low_case)/sizeof(lk_low_case[0]); idx++) {
@@ -357,11 +385,9 @@ size_t lk_first_stressed_vowel(const char *word) {
             return 0;
         }
 
-        if (cp == 'a' || cp == 'e'
-            || cp == 'i' || cp == 'o' || cp == 'u') {
+        if (lk_is_unstressed_vowel(cp)) {
             no++;
-        } else if (cp == 225 || cp == 243 || cp == 233
-                  || cp == 237 || cp == 250) {
+        } else if (lk_is_stressed_vowel(cp)) {
             return no + 1;
         }
 
@@ -369,13 +395,6 @@ size_t lk_first_stressed_vowel(const char *word) {
     }
 
     return 0;
-}
-
-static int lk_is_vowel(utf8proc_uint32_t cp) {
-    return (cp == 'a' || cp == 'e'
-        || cp == 'i' || cp == 'o' || cp == 'u'
-        || cp == 225 || cp == 243 || cp == 233
-        || cp == 237 || cp == 250);
 }
 
 lk_result lk_put_stress(const char *word, int pos, char *out, size_t out_sz) {
@@ -408,25 +427,8 @@ lk_result lk_put_stress(const char *word, int pos, char *out, size_t out_sz) {
         }
 
         if (pos >= 0 && lk_is_vowel(cp)) {
-            if (pos == 0) {
-                switch (cp) {
-                    case 'a':
-                        cp = 225;
-                        break;
-                    case 'e':
-                        cp = 233;
-                        break;
-                    case 'i':
-                        cp = 237;
-                        break;
-                    case 'o':
-                        cp = 243;
-                        break;
-                    case 'u':
-                        cp = 250;
-                        break;
-                }
-            }
+            if (pos == 0)
+                cp = lk_unstress_to_stress(cp);
             pos--;
         }
 
@@ -457,7 +459,7 @@ lk_result lk_remove_glottal_stop(const char *word, char *out, size_t out_sz) {
         len = utf8proc_iterate(usrc, -1, &cp);
         usrc += len;
 
-        if (cp == 700 || cp == '\'' || cp == '`') {
+        if (cp == LK_QUOTE || cp == '\'' || cp == '`') {
             continue;
         }
 
@@ -485,7 +487,7 @@ int lk_has_glottal_stop(const char *word) {
         len = utf8proc_iterate(usrc, -1, &cp);
         usrc += len;
 
-        if (cp == 700 || cp == '\'' || cp == '`') {
+        if (cp == LK_QUOTE || cp == '\'' || cp == '`') {
             return 1;
         }
     }
@@ -494,7 +496,7 @@ int lk_has_glottal_stop(const char *word) {
 }
 
 static int is_lk_char(utf8proc_uint32_t c) {
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == 700)
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == LK_QUOTE)
         return 1;
 
     size_t sz = sizeof(lk_low_case) / sizeof(lk_low_case[0]);

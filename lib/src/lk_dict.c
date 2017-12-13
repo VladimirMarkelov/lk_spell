@@ -72,20 +72,20 @@ static void lk_append_ablaut(char *out, lk_ablaut ablaut, int is_ab_stressed) {
 
     switch (ablaut) {
         case LK_ABLAUT_A:
-            cp = is_ab_stressed ? 225 : 'a';
+            cp = is_ab_stressed ? LK_A_LOW : 'a';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
             break;
         case LK_ABLAUT_E:
-            cp = is_ab_stressed ? 233 : 'e';
+            cp = is_ab_stressed ? LK_E_LOW : 'e';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
             break;
         case LK_ABLAUT_N:
-            cp = is_ab_stressed ? 237 : 'i';
+            cp = is_ab_stressed ? LK_I_LOW : 'i';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
-            cp = 331; /* ng */
+            cp = LK_N_LOW;
             len = utf8proc_encode_char(cp, udst);
             udst += len;
             break;
