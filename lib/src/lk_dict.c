@@ -578,68 +578,20 @@ static lk_result add_word_to_tree(struct lk_dictionary *dict, const struct lk_wo
     int is_ab_stressed = lk_is_ablaut_stressed(base->word);
 
     /* create ablaut base */
-    utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)base->word;
-    utf8proc_uint8_t *udst = (utf8proc_uint8_t*)ab_base;
-    utf8proc_int32_t cp;
-    size_t len;
-    while (*usrc) {
-        len = utf8proc_iterate(usrc, -1, &cp);
-        usrc += len;
-        if (cp == 'A' || cp == 'I'
-            || cp == 193/* A' */ || cp == 205/* I' */) {
-            break;
-        }
-        len = utf8proc_encode_char(cp, udst);
-        udst += len;
-    }
-    *udst = '\0';
-    size_t ab_base_len = strlen(ab_base);
+    lk_copy_word_base(base->word, ab_base);
 
+    size_t ab_base_len = strlen(ab_base);
     if (ab_base_len + 4 >= LK_MAX_WORD_LEN)
         return LK_OUT_OF_MEMORY;
 
+    int ab_type[3] = {LK_ABLAUT_A, LK_ABLAUT_E, LK_ABLAUT_N};
     for (int i = 0; i < 3; i++) {
         strcpy(ab, ab_base);
-        udst = (utf8proc_uint8_t*)ab + ab_base_len;
-        switch (i) {
-            case 0:
-                if (is_ab_stressed) {
-                    cp = 225;
-                } else {
-                    cp = 'a';
-                }
-                len = utf8proc_encode_char(cp, udst);
-                udst += len;
-                *udst = '\0';
-                break;
-            case 1:
-                if (is_ab_stressed) {
-                    cp = 233;
-                } else {
-                    cp = 'e';
-                }
-                len = utf8proc_encode_char(cp, udst);
-                udst += len;
-                *udst = '\0';
-                break;
-            case 2:
-                if (is_ab_stressed) {
-                    cp = 237;
-                } else {
-                    cp = 'i';
-                }
-                len = utf8proc_encode_char(cp, udst);
-                udst += len;
-                cp = 331; /* ng */
-                len = utf8proc_encode_char(cp, udst);
-                udst += len;
-                *udst = '\0';
-                break;
-        }
-
+        lk_append_ablaut(ab, ab_type[i], is_ab_stressed);
         struct lk_word *w = (struct lk_word*)calloc(1, sizeof(*w));
         if (w == NULL)
             return LK_OUT_OF_MEMORY;
+
         w->wtype = base->wtype;
         w->base = (struct lk_word*)base;
         w->word = (char*)calloc(strlen(ab) + 1, sizeof(char));
@@ -651,14 +603,11 @@ static lk_result add_word_to_tree(struct lk_dictionary *dict, const struct lk_wo
 
         dict_add_word(dict, w);
         lk_result res = add_word_ascii_forms(dict->tree, w, 0);
+        if (res == LK_OK && ablaut != LK_ABLAUT_0)
+            res = dict_add_ablaut(dict, w, ablaut);
+
         if (res != LK_OK)
             return res;
-
-        if (ablaut != LK_ABLAUT_0) {
-            res = dict_add_ablaut(dict, w, ablaut);
-            if (res != LK_OK)
-                return res;
-        }
     }
 
     return LK_OK;
