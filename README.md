@@ -7,7 +7,7 @@ It kind of works but:
 3. Some function are to be removed - now they exist just for debugging
 
 ### TODO
-- [ ] Remove unused code
+- [x] Remove unused code
 - [ ] Eliminate duplicated code and make some functions smaller
 - [x] Remove debug functions
 - [ ] Add at least small dictionary to the library

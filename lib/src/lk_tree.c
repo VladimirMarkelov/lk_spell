@@ -107,6 +107,8 @@ static lk_result put_word_to_list(struct lk_leaf *leaf, const struct lk_word *wo
 lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct lk_word *word) {
     if (tree == NULL || path == NULL || word == NULL)
         return LK_INVALID_ARG;
+    if (*path == '\0')
+        return LK_OK;
 
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)path;
     utf8proc_int32_t cp;
@@ -138,21 +140,21 @@ lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct 
             leaf = NULL;
         } else {
             struct lk_leaf *search = add_char_to_level(leaf, cp);
+            if (search == NULL)
+                return LK_OUT_OF_MEMORY;
+
             prev_leaf = search;
             leaf = prev_leaf->next;
         }
     }
 
-    if (prev_leaf) {
-        return put_word_to_list(prev_leaf, word);
-    } else {
-        /* TODO: unexpected trouble */
-        return LK_OUT_OF_MEMORY; /* ??? */
-    }
+    return put_word_to_list(prev_leaf, word);
 }
 
 const struct lk_word_ptr* lk_tree_search(const struct lk_tree *tree, const char *path) {
     if (tree == NULL || path == NULL)
+        return NULL;
+    if (*path == '\0')
         return NULL;
 
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)path;
@@ -187,3 +189,4 @@ const struct lk_word_ptr* lk_tree_search(const struct lk_tree *tree, const char 
 
     return leaf->word;
 }
+

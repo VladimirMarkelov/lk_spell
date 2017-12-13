@@ -45,14 +45,12 @@ struct lk_word_form {
     struct lk_word_form *next;
 };
 
-static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) {
-    int is_ab_stressed = lk_is_ablaut_stressed(word);
-    utf8proc_int32_t cp;
-    size_t len;
-
-    /* create ablaut base */
+static void lk_copy_word_base(const char *word, char *out) {
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)word;
     utf8proc_uint8_t *udst = (utf8proc_uint8_t*)out;
+    size_t len;
+    utf8proc_int32_t cp;
+
     while (*usrc) {
         len = utf8proc_iterate(usrc, -1, &cp);
         usrc += len;
@@ -64,43 +62,42 @@ static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) 
         udst += len;
     }
     *udst = '\0';
+}
 
-    udst = (utf8proc_uint8_t*)out + strlen(out);
+static void lk_append_ablaut(char *out, lk_ablaut ablaut, int is_ab_stressed) {
+    utf8proc_int32_t cp;
+    size_t len;
+
+    utf8proc_uint8_t *udst = (utf8proc_uint8_t*)out + strlen(out);
+
     switch (ablaut) {
         case LK_ABLAUT_A:
-            if (is_ab_stressed) {
-                cp = 225;
-            } else {
-                cp = 'a';
-            }
+            cp = is_ab_stressed ? 225 : 'a';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
-            *udst = '\0';
             break;
         case LK_ABLAUT_E:
-            if (is_ab_stressed) {
-                cp = 233;
-            } else {
-                cp = 'e';
-            }
+            cp = is_ab_stressed ? 233 : 'e';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
-            *udst = '\0';
             break;
         case LK_ABLAUT_N:
-            if (is_ab_stressed) {
-                cp = 237;
-            } else {
-                cp = 'i';
-            }
+            cp = is_ab_stressed ? 237 : 'i';
             len = utf8proc_encode_char(cp, udst);
             udst += len;
             cp = 331; /* ng */
             len = utf8proc_encode_char(cp, udst);
             udst += len;
-            *udst = '\0';
             break;
     }
+
+    *udst = '\0';
+}
+
+static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) {
+    int is_ab_stressed = lk_is_ablaut_stressed(word);
+    lk_copy_word_base(word, out);
+    lk_append_ablaut(out, ablaut, is_ab_stressed);
 }
 
 const struct lk_word_ptr* lk_dict_find_word(const struct lk_dictionary *dict, const char *word) {
@@ -141,13 +138,137 @@ static lk_ablaut lk_find_word_ablaut(const struct lk_dictionary *dict, const cha
     return ab;
 }
 
+static int lk_suggestions_no(const struct lk_word_ptr *words, const char *word) {
+    int total = 0;
+
+    while (words) {
+        total++;
+        if (strcmp(words->word->word, word) == 0) {
+            total = 0;
+            break;
+        }
+        words = words->next;
+    }
+
+    return total;
+}
+
+static lk_result lk_add_correct_ablaut(struct lk_word_form **forms,
+        const char *word, const struct lk_word_ptr *wlist,
+        lk_ablaut ab, int *total) {
+    if (ab == LK_ABLAUT_0) {
+        return LK_OK;
+    }
+
+    const struct lk_word_ptr *cw = wlist;
+    while (cw) {
+        const struct lk_word *wr = cw->word;
+        while (wr->base)
+            wr = wr->base;
+        char buf[LK_MAX_WORD_LEN] = {0};
+
+        if (lk_has_ablaut(wr->word)) {
+            switch (ab) {
+                case LK_ABLAUT_A:
+                    if (!lk_ends_with(word, "a") && !lk_ends_with(word, "á")) {
+                        lk_generate_ablauted(wr->word, ab, buf);
+                    }
+                    break;
+                case LK_ABLAUT_E:
+                    if (!lk_ends_with(word, "e") && !lk_ends_with(word, "é")) {
+                        lk_generate_ablauted(wr->word, ab, buf);
+                    }
+                    break;
+                case LK_ABLAUT_N:
+                    if (!lk_ends_with(word, "iŋ") && !lk_ends_with(word, "íŋ")) {
+                        lk_generate_ablauted(wr->word, ab, buf);
+                    }
+                    break;
+            }
+        }
+
+        if (*buf != '\0') {
+            struct lk_word_form *frm = (struct lk_word_form*)calloc(1, sizeof(*frm));
+            if (frm == NULL) {
+                return LK_OUT_OF_MEMORY;
+            }
+
+            strcpy(frm->form, buf);
+            if (*forms == NULL) {
+                *forms = frm;
+            } else {
+                struct lk_word_form *tmp = *forms;
+                while (tmp->next != NULL)
+                    tmp = tmp->next;
+                tmp->next = frm;
+            }
+            (*total)++;
+        }
+
+        cw = cw->next;
+    }
+
+    *total++;
+    return LK_OK;
+}
+
+static lk_result lk_add_to_suggestions(char **suggestions, size_t idx, const char *word) {
+    /* skip duplicates */
+    int already_used = 0;
+    for (size_t chk = 0; chk < idx; ++chk) {
+        if (strcmp(suggestions[chk], word) == 0) {
+            already_used = 1;
+            break;
+        }
+    }
+    if (already_used) {
+        return LK_EXACT_MATCH;
+    }
+
+    suggestions[idx] = (char*)calloc(strlen(word) + 1, sizeof(char));
+    if (suggestions[idx] == NULL)
+        return LK_OUT_OF_MEMORY;
+
+    strcpy(suggestions[idx], word);
+    return LK_OK;
+}
+
+static void lk_free_suggestions(char **suggestions) {
+    if (suggestions == NULL) {
+        return;
+    }
+
+    char *f = *suggestions;
+    while (f) {
+        free(f);
+        f++;
+    }
+
+    free(suggestions);
+}
+
+static void lk_free_correct_ablauts(struct lk_word_form *forms) {
+    if (forms == NULL) {
+        return;
+    }
+
+    struct lk_word_form *tmp = forms;
+    while (tmp != NULL) {
+        struct lk_word_form *n = tmp->next;
+        free(tmp);
+        tmp = n;
+    }
+}
+
 char** lk_dict_exact_lookup(const struct lk_dictionary *dict, const char *word, const char *next_word, int *count) {
     char** suggestions = NULL;
     static char unstressed[LK_MAX_WORD_LEN];
 
+    if (count == NULL)
+        return NULL;
+
     if (word == NULL || !lk_is_dict_valid(dict)) {
-        if (count != NULL)
-            *count = -LK_INVALID_ARG;
+        *count = -LK_INVALID_ARG;
         return NULL;
     }
 
@@ -157,200 +278,99 @@ char** lk_dict_exact_lookup(const struct lk_dictionary *dict, const char *word, 
     /* lookup the main word */
     /* if not found - return NULL & count = -LK_WORD_NOT_FOUND */
     const struct lk_word_ptr *match = lk_dict_find_word(dict, word);
-    if (match == NULL) {
-        /* try look for incorrect stress */
-        int scnt = lk_stressed_vowels_no(word);
-        if (scnt > 0) {
-            lk_result r = lk_destress(word, unstressed, LK_MAX_WORD_LEN);
-            if (r != LK_OK) {
-                if (count)
-                    *count = -LK_INVALID_STRING;
-                return NULL;
-            }
-            match = lk_dict_find_word(dict, unstressed);
-            if (match == NULL) {
-                if (count)
-                    *count = -LK_WORD_NOT_FOUND;
-                return NULL;
-            }
-            word = unstressed;
-        } else {
-            if (count)
-                *count = -LK_WORD_NOT_FOUND;
+    if (match == NULL && lk_stressed_vowels_no(word) > 0) {
+        /* process invalid word stressing */
+        lk_result r = lk_destress(word, unstressed, LK_MAX_WORD_LEN);
+        if (r != LK_OK) {
+            *count = -LK_INVALID_STRING;
             return NULL;
         }
+
+        /* invalid stress detected - used unstressed word instead of user's one */
+        match = lk_dict_find_word(dict, unstressed);
+        if (match != NULL)
+            word = unstressed;
     }
 
-    int total = 0;
-    const struct lk_word_ptr *cw = match;
-    while (cw) {
-        total++;
-        if (strcmp(cw->word->word, word) == 0) {
-            total = 0;
-            break;
-        }
-        cw = cw->next;
-    }
-
-    if (total == 0 && ab == LK_ABLAUT_0) {
-        if (count)
-            *count = 0;
+    if (match == NULL) {
+        *count = -LK_WORD_NOT_FOUND;
         return NULL;
     }
 
+    int total = lk_suggestions_no(match, word);
+    if (total == 0 && ab == LK_ABLAUT_0) {
+        *count = 0;
+        return NULL;
+    }
+    int skip_match = total == 0;
+
     struct lk_word_form *w_list = NULL;
     /* if ablaut then check if the form is correct */
-    if (ab != LK_ABLAUT_0) {
-        const struct lk_word_ptr *cw = match;
-        while (cw) {
-            const struct lk_word *wr = cw->word;
-            while (wr->base)
-                wr = wr->base;
-            char buf[LK_MAX_WORD_LEN] = {0};
-
-            if (lk_has_ablaut(wr->word)) {
-                switch (ab) {
-                    case LK_ABLAUT_A:
-                        if (!lk_ends_with(word, "a") && !lk_ends_with(word, "á")) {
-                            lk_generate_ablauted(wr->word, ab, buf);
-                        }
-                        break;
-                    case LK_ABLAUT_E:
-                        if (!lk_ends_with(word, "e") && !lk_ends_with(word, "é")) {
-                            lk_generate_ablauted(wr->word, ab, buf);
-                        }
-                        break;
-                    case LK_ABLAUT_N:
-                        if (!lk_ends_with(word, "iŋ") && !lk_ends_with(word, "íŋ")) {
-                            lk_generate_ablauted(wr->word, ab, buf);
-                        }
-                        break;
-                }
-            }
-
-            if (*buf != '\0') {
-                struct lk_word_form *frm = (struct lk_word_form*)calloc(1, sizeof(*frm));
-                if (frm == NULL) {
-                    goto err_oom;
-                }
-
-                strcpy(frm->form, buf);
-                if (w_list == NULL) {
-                    w_list = frm;
-                } else {
-                    struct lk_word_form *tmp = w_list;
-                    while (tmp->next != NULL)
-                        tmp = tmp->next;
-                    tmp->next = frm;
-                }
-                total++;
-            }
-
-            cw = cw->next;
-        }
+    lk_result ab_added = lk_add_correct_ablaut(&w_list, word, match, ab, &total);
+    if (ab_added != LK_OK) {
+        lk_free_correct_ablauts(w_list);
+        *count = -LK_OUT_OF_MEMORY;
+        return NULL;
     }
 
-    /* if there was incorrect ablaut then add extra
-     * form as a separator between base forms and ablauted ones
-     */
-    if (w_list != NULL)
-        total++;
     /* add extra for NULL tail */
     total++;
-
     /* generate and return all the list */
     suggestions = (char**)calloc(total, sizeof(char*));
-    if (suggestions == NULL)
-        goto err_oom;
-
-    cw = match;
-    size_t idx = 0;
-    while (cw) {
-        /* skip infinitive forms of ablautable words */
-        if (lk_has_ablaut(cw->word->word)) {
-            cw = cw->next;
-            continue;
-        }
-
-        /* skip duplicates */
-        int already_used = 0;
-        for (size_t chk = 0; chk < idx; ++chk) {
-            if (strcmp(suggestions[chk], cw->word->word) == 0) {
-                already_used = 1;
-                break;
-            }
-        }
-        if (already_used) {
-            cw = cw->next;
-            continue;
-        }
-
-        suggestions[idx] = (char*)calloc(strlen(cw->word->word) + 1, sizeof(char));
-        if (suggestions[idx] == NULL)
-            goto err_oom;
-
-        strcpy(suggestions[idx], cw->word->word);
-        ++idx;
-        cw = cw->next;
+    if (suggestions == NULL) {
+        lk_free_correct_ablauts(w_list);
+        *count = -LK_OUT_OF_MEMORY;
+        return NULL;
     }
-    if (w_list != NULL) {
-        suggestions[idx] = (char*)calloc(strlen("-") + 1, sizeof(char));
-        if (suggestions[idx] == NULL)
-            goto err_oom;
-        strcpy(suggestions[idx++], "-");
 
-        struct lk_word_form *tmp = w_list;
-        while (tmp != NULL) {
-            /* skip duplicates */
-            int already_used = 0;
-            for (size_t chk = 0; chk < idx; ++chk) {
-                if (strcmp(suggestions[chk], tmp->form) == 0) {
-                    already_used = 1;
-                    break;
+    size_t idx = 0;
+    lk_result final = LK_OK;
+    if (!skip_match) {
+        const struct lk_word_ptr *cw = match;
+        while (final == LK_OK && cw) {
+            /* skip infinitive forms of ablautable words */
+            if (!lk_has_ablaut(cw->word->word)) {
+                lk_result res = lk_add_to_suggestions(suggestions, idx, cw->word->word);
+                if (res == LK_OUT_OF_MEMORY) {
+                    final = res;
+                } else if (res == LK_OK) {
+                    ++idx;
                 }
             }
-            if (already_used) {
-                tmp = tmp->next;
-                continue;
+
+            cw = cw->next;
+        }
+    }
+    if (final == LK_OK && w_list != NULL) {
+        suggestions[idx] = (char*)calloc(strlen("-") + 1, sizeof(char));
+        if (suggestions[idx] == NULL) {
+            final = LK_OUT_OF_MEMORY;
+        } else {
+            strcpy(suggestions[idx++], "-");
+        }
+
+        struct lk_word_form *tmp = w_list;
+        while (final == LK_OK && tmp != NULL) {
+            lk_result res = lk_add_to_suggestions(suggestions, idx, tmp->form);
+            if (res == LK_OUT_OF_MEMORY) {
+                final = res;
+            } else if (res == LK_OK) {
+                ++idx;
             }
 
-            suggestions[idx] = (char*)calloc(strlen(tmp->form) + 1, sizeof(char));
-            if (suggestions[idx] == NULL)
-                goto err_oom;
-            strcpy(suggestions[idx++], tmp->form);
             tmp = tmp->next;
         }
     }
 
-    if (count != NULL)
-        *count = idx;
-
-    goto free_ablauts;
-
-err_oom:
-    if (suggestions != NULL) {
-        char *f = *suggestions;
-        while (f) {
-            free(f);
-            f++;
-        }
-
-        free(suggestions);
-        suggestions = NULL;
-    }
-
-    if (count != NULL)
+    if (final != LK_OK) {
+        lk_free_suggestions(suggestions);
+        lk_free_correct_ablauts(w_list);
         *count = -LK_OUT_OF_MEMORY;
-
-free_ablauts:
-    if (w_list) {
-        struct lk_word_form *tmp = w_list;
-        while (tmp != NULL) {
-            struct lk_word_form *n = tmp->next;
-            free(tmp);
-            tmp = n;
-        }
+        return NULL;
     }
+
+    *count = idx;
+    lk_free_correct_ablauts(w_list);
 
     return suggestions;
 }
@@ -920,7 +940,6 @@ lk_result lk_read_dictionary(struct lk_dictionary *dict, const char *path) {
     lk_result res = LK_OK, file_res = LK_OK;
     while (file_res == LK_OK) {
         file_res = lk_file_read(file, buf, 4096);
-
         if (file_res == LK_EOF) {
             break;
         }

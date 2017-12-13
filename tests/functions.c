@@ -141,26 +141,6 @@ const char* test_lowcase() {
     return 0;
 }
 
-const char* test_validword() {
-    char *a[] = {
-        "sačmeá",
-        "tщt`a'b",
-        "anc-haŋ",
-        "čikʼála",
-        "testŋ",
-        "Ablaút",
-        "te12stŋ",
-    };
-    int res[] = {1, 0, 1, 1, 1, 0, 0};
-
-    for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
-        int r = lk_is_valid_word(a[i]);
-        ut_assert(a[i], res[i] == r);
-    }
-
-    return 0;
-}
-
 const char* test_has_ablaut() {
     char *a[] = {
         NULL,
@@ -499,7 +479,6 @@ const char * run_all_test() {
     ut_run_test("File read", test_fileread);
 
     ut_run_test("lowcase", test_lowcase);
-    ut_run_test("valid word", test_validword);
     ut_run_test("has ablaut", test_has_ablaut);
     ut_run_test("count stressed", test_stressed_no);
     ut_run_test("count vowels", test_vowel_no);

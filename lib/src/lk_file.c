@@ -70,9 +70,11 @@ void lk_file_close(struct lk_file *file) {
     if (file->fh) {
         fclose(file->fh);
     }
+
     if (file->cap) {
         free(file->buffer);
     }
+
     free(file);
 }
 
@@ -130,6 +132,7 @@ lk_result lk_file_read(struct lk_file *file, char *buffer, size_t buf_size) {
             }
         }
     }
+
     for (;;) {
         char c = file->buffer[file->pos];
         if (c != '\n' && c != '\r') {

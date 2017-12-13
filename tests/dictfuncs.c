@@ -159,10 +159,9 @@ const char* test_lookup() {
     lk_exact_lookup_free(lookup);
 
     lookup = lk_dict_exact_lookup(dict, "sápa", ".", &cnt);
-    ut_assert("Incorrect ablaut form #1", cnt == 3 && lookup != NULL
-            && strcmp(lookup[1], "-") == 0
-            && strcmp(lookup[2], "sápe") == 0
-            && strcmp(lookup[0], "sápa") == 0);
+    ut_assert("Incorrect ablaut form #1", cnt == 2 && lookup != NULL
+            && strcmp(lookup[0], "-") == 0
+            && strcmp(lookup[1], "sápe") == 0);
     lk_exact_lookup_free(lookup);
 
     lookup = lk_dict_exact_lookup(dict, "sapá", ".", &cnt);

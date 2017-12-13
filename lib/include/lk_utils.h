@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 lk_result lk_to_low_case(const char *word, char *out, size_t out_sz);
-int lk_is_valid_word(const char *word);
 int lk_has_ablaut(const char *word);
 int lk_is_ablaut_stressed(const char *word);
 
