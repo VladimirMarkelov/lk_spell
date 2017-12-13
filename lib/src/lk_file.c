@@ -67,13 +67,11 @@ void lk_file_close(struct lk_file *file) {
     if (! file)
         return;
 
-    if (file->fh) {
+    if (file->fh)
         fclose(file->fh);
-    }
 
-    if (file->cap) {
+    if (file->cap)
         free(file->buffer);
-    }
 
     free(file);
 }

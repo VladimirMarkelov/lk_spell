@@ -48,16 +48,14 @@ struct lk_word_form {
 static void lk_copy_word_base(const char *word, char *out) {
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)word;
     utf8proc_uint8_t *udst = (utf8proc_uint8_t*)out;
-    size_t len;
     utf8proc_int32_t cp;
 
     while (*usrc) {
-        len = utf8proc_iterate(usrc, -1, &cp);
+        size_t len = utf8proc_iterate(usrc, -1, &cp);
         usrc += len;
-        if (cp == 'A' || cp == 'I'
-            || cp == 193/* A' */ || cp == 205/* I' */) {
+        if (cp == 'A' || cp == 'I' || cp == LK_A_UP || cp == LK_I_UP)
             break;
-        }
+
         len = utf8proc_encode_char(cp, udst);
         udst += len;
     }
@@ -156,9 +154,8 @@ static int lk_suggestions_no(const struct lk_word_ptr *words, const char *word) 
 static lk_result lk_add_correct_ablaut(struct lk_word_form **forms,
         const char *word, const struct lk_word_ptr *wlist,
         lk_ablaut ab, int *total) {
-    if (ab == LK_ABLAUT_0) {
+    if (ab == LK_ABLAUT_0)
         return LK_OK;
-    }
 
     const struct lk_word_ptr *cw = wlist;
     while (cw) {
@@ -189,9 +186,8 @@ static lk_result lk_add_correct_ablaut(struct lk_word_form **forms,
 
         if (*buf != '\0') {
             struct lk_word_form *frm = (struct lk_word_form*)calloc(1, sizeof(*frm));
-            if (frm == NULL) {
+            if (frm == NULL)
                 return LK_OUT_OF_MEMORY;
-            }
 
             strcpy(frm->form, buf);
             if (*forms == NULL) {
@@ -221,9 +217,8 @@ static lk_result lk_add_to_suggestions(char **suggestions, size_t idx, const cha
             break;
         }
     }
-    if (already_used) {
+    if (already_used)
         return LK_EXACT_MATCH;
-    }
 
     suggestions[idx] = (char*)calloc(strlen(word) + 1, sizeof(char));
     if (suggestions[idx] == NULL)
@@ -234,9 +229,8 @@ static lk_result lk_add_to_suggestions(char **suggestions, size_t idx, const cha
 }
 
 static void lk_free_suggestions(char **suggestions) {
-    if (suggestions == NULL) {
+    if (suggestions == NULL)
         return;
-    }
 
     char *f = *suggestions;
     while (f) {
@@ -248,9 +242,8 @@ static void lk_free_suggestions(char **suggestions) {
 }
 
 static void lk_free_correct_ablauts(struct lk_word_form *forms) {
-    if (forms == NULL) {
+    if (forms == NULL)
         return;
-    }
 
     struct lk_word_form *tmp = forms;
     while (tmp != NULL) {
@@ -463,10 +456,8 @@ static lk_result add_without_stop(struct lk_tree *tree, const char *word, const 
     static char gs[LK_MAX_WORD_LEN];
 
     lk_result res = lk_remove_glottal_stop(word, gs, LK_MAX_WORD_LEN);
-    if (res != LK_OK)
-        return res;
-
-    res = lk_tree_add_word(tree, gs, base);
+    if (res == LK_OK)
+        res = lk_tree_add_word(tree, gs, base);
 
     return res;
 }
@@ -496,32 +487,26 @@ static lk_result generate_ascii_forms(struct lk_tree *tree, const char *word, co
     if (vcnt > 0) {
         /* add a form without any stressed vowel */
         res = lk_destress(tmp, buf, LK_MAX_WORD_LEN);
+        if (res == LK_OK && strcmp(buf, tmp) != 0) {
+            res = lk_tree_add_word(tree, buf, base);
+            if (res == LK_OK && has_stop)
+                res = add_without_stop(tree, buf, base);
+        }
+
         if (res != LK_OK)
             return res;
-        if (strcmp(buf, tmp) != 0) {
-            res = lk_tree_add_word(tree, buf, base);
-            if (res != LK_OK)
-                return res;
-            if (has_stop) {
-                res = add_without_stop(tree, buf, base);
-                if (res != LK_OK)
-                    return res;
-            }
-        }
     } else {
         strcpy(buf, tmp);
     }
 
-    /*res = */lk_to_ascii(buf, tmp, LK_MAX_WORD_LEN);
+    lk_to_ascii(buf, tmp, LK_MAX_WORD_LEN);
     if (strcmp(buf, tmp) != 0) {
         res = lk_tree_add_word(tree, tmp, base);
+        if (res == LK_OK && has_stop)
+            res = add_without_stop(tree, tmp, base);
+
         if (res != LK_OK)
             return res;
-        if (has_stop) {
-            res = add_without_stop(tree, tmp, base);
-            if (res != LK_OK)
-                return res;
-        }
     }
 
     char *aph = strchr(tmp, '\'');
@@ -533,11 +518,8 @@ static lk_result generate_ascii_forms(struct lk_tree *tree, const char *word, co
         *aph = '`';
         aph = strchr(aph, '\'');
     }
-    res = lk_tree_add_word(tree, tmp, base);
-    if (res != LK_OK)
-        return res;
 
-    return LK_OK;
+    return lk_tree_add_word(tree, tmp, base);
 }
 
 static lk_result add_word_ascii_forms(struct lk_tree *tree, const struct lk_word *base,
@@ -547,10 +529,10 @@ static lk_result add_word_ascii_forms(struct lk_tree *tree, const struct lk_word
     /* add the word */
     const char *base_word = contracted ? base->contracted : base->word;
     lk_result res = lk_tree_add_word(tree, base_word, base);
-    if (res != LK_OK)
-        return res;
+    if (res == LK_OK)
+        res = generate_ascii_forms(tree, base_word, base);
 
-    return generate_ascii_forms(tree, base_word, base);
+    return res;
 }
 
 static lk_result add_word_to_tree(struct lk_dictionary *dict, const struct lk_word *base,
@@ -615,22 +597,17 @@ static lk_result add_word_to_tree(struct lk_dictionary *dict, const struct lk_wo
 
 static lk_result add_all_forms_to_dict(struct lk_dictionary *dict, struct lk_word *word,
         lk_ablaut ablaut) {
-    lk_result suf_res = lk_tree_add_word(dict->tree, word->word, word);
-    if (suf_res != LK_OK)
-        return suf_res;
+    lk_result res = lk_tree_add_word(dict->tree, word->word, word);
+    if (res == LK_OK)
+        res = add_word_to_tree(dict, word, ablaut);
 
-    suf_res = add_word_to_tree(dict, word, ablaut);
-    if (suf_res != LK_OK)
-        return suf_res;
-
-    if (word->contracted != NULL) {
-        suf_res = lk_tree_add_word(dict->tree, word->contracted, word);
-        if (suf_res != LK_OK)
-            return suf_res;
-        suf_res = add_word_ascii_forms(dict->tree, word, 1);
+    if (res == LK_OK && word->contracted != NULL) {
+        res = lk_tree_add_word(dict->tree, word->contracted, word);
+        if (res == LK_OK)
+            res = add_word_ascii_forms(dict->tree, word, 1);
     }
 
-    return suf_res;
+    return res;
 }
 
 static lk_ablaut lk_ablaut_from_string(const char *s) {
@@ -834,8 +811,6 @@ static const char* lk_read_ablaut_and_contraction(const char *info,
 }
 
 lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
-    static char buf[LK_MAX_WORD_LEN], tmp[LK_MAX_WORD_LEN];
-
     if (!lk_is_dict_valid(dict) || info == NULL)
         return LK_INVALID_ARG;
 
@@ -843,19 +818,16 @@ lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
         return LK_COMMENT;
 
     struct lk_word *base = (struct lk_word*)calloc(1, sizeof(struct lk_word));
-    struct lk_word *out = NULL;
     if (base == NULL)
         return LK_OUT_OF_MEMORY;
 
     /* read word props */
-    const char *spc = NULL;
-    size_t len;
-    lk_ablaut ab = LK_ABLAUT_0;
     base->wtype = *info++;
     if (base->wtype >= 'a' && base->wtype <= 'z')
         base->wtype = base->wtype - 'a' + 'A';
     lk_result res;
-    spc = lk_read_ablaut_and_contraction(info, base, &ab, &res);
+    lk_ablaut ab = LK_ABLAUT_0;
+    const char *spc = lk_read_ablaut_and_contraction(info, base, &ab, &res);
     if (spc == NULL)
         return res;
 
@@ -942,9 +914,9 @@ lk_result lk_read_dictionary(struct lk_dictionary *dict, const char *path) {
     lk_result res = LK_OK, file_res = LK_OK;
     while (file_res == LK_OK) {
         file_res = lk_file_read(file, buf, 4096);
-        if (file_res == LK_EOF) {
+        if (file_res == LK_EOF)
             break;
-        }
+
         if (file_res != LK_OK) {
             res = file_res;
             break;

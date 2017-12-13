@@ -66,6 +66,7 @@ static struct lk_leaf* add_char_to_level(struct lk_leaf *start, utf8proc_uint32_
     n = (struct lk_leaf*)malloc(sizeof(*n));
     if (n == NULL)
         return NULL;
+
     p->sibling = n;
     n->c = c;
     n->sibling = NULL;
@@ -152,19 +153,15 @@ lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct 
 }
 
 const struct lk_word_ptr* lk_tree_search(const struct lk_tree *tree, const char *path) {
-    if (tree == NULL || path == NULL)
-        return NULL;
-    if (*path == '\0')
+    if (tree == NULL || path == NULL || *path == '\0')
         return NULL;
 
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)path;
     utf8proc_int32_t cp;
-    size_t len;
-
     const struct lk_leaf *leaf = tree->head;
 
     while (*usrc) {
-        len = utf8proc_iterate(usrc, -1, &cp);
+        size_t len = utf8proc_iterate(usrc, -1, &cp);
         if (cp == -1)
             return NULL;
         usrc += len;
