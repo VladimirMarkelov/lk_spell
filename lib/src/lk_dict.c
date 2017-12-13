@@ -633,14 +633,210 @@ static lk_result add_all_forms_to_dict(struct lk_dictionary *dict, struct lk_wor
     return suf_res;
 }
 
-lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
+static lk_ablaut lk_ablaut_from_string(const char *s) {
+    switch (*s) {
+        case 'A': case 'a':
+            return LK_ABLAUT_A;
+        case 'E': case 'e':
+            return LK_ABLAUT_E;
+        case 'N': case 'n':
+            return LK_ABLAUT_N;
+        default:
+            return LK_ABLAUT_0;
+    }
+}
+
+static const char* lk_detect_special_char(const char* s) {
+    const char* chr = strchr(s, '~');
+    if (chr == NULL)
+        chr = strchr(s, '@');
+    if (chr == NULL)
+        chr = strchr(s, '%');
+
+    return chr;
+}
+
+static lk_result lk_replace_special_char(const char *templ,
+        char c, char *buf,
+        const struct lk_word *base, const char *unstressed,
+        const struct lk_word *last) {
+    const char *chr = strchr(templ, c);
+    size_t len = chr - templ;
+    if (len >= LK_MAX_WORD_LEN)
+        return LK_BUFFER_SMALL;
+    if (len > 0)
+        strncpy(buf, templ, len);
+    buf[len] = '\0';
+
+    switch (c) {
+        case '~':
+            if (len + strlen(base->word) >= LK_MAX_WORD_LEN)
+                return LK_BUFFER_SMALL;
+            strcat(buf, base->word);
+            break;
+        case '@':
+            if (len + strlen(unstressed) >= LK_MAX_WORD_LEN)
+                return LK_BUFFER_SMALL;
+            strcat(buf, unstressed);
+            break;
+        case '%':
+            if (len + strlen(last->word) >= LK_MAX_WORD_LEN)
+                return LK_BUFFER_SMALL;
+            strcat(buf, last->word);
+            break;
+    }
+
+    chr++;
+    if (strlen(buf) + strlen(chr) >= LK_MAX_WORD_LEN)
+        return LK_BUFFER_SMALL;
+    strcat(buf, chr);
+
+    return LK_OK;
+}
+
+static struct lk_word* lk_add_form_as_is(struct lk_dictionary *dict, const char *word,
+       struct lk_word *base, lk_ablaut ab) {
+    struct lk_word *out = (struct lk_word*)calloc(1, sizeof(struct lk_word));
+    if (out == NULL)
+        return NULL;
+    out->word = (char *)calloc(1, strlen(word) + 1);
+    if (out->word == NULL) {
+        free(out);
+        return NULL;
+    }
+    strcpy(out->word, word);
+    out->base = base;
+    out->wtype = base->wtype;
+    dict_add_word(dict, out);
+
+    lk_result res = add_all_forms_to_dict(dict, out, ab);
+    if (res != LK_OK)
+        return NULL;
+
+    return out;
+}
+
+static lk_result lk_iterate_forms(struct lk_dictionary *dict,
+        char *start, struct lk_word *base, lk_ablaut ab) {
+    const char *spc = skip_spaces(start);
+    struct lk_word *last_full = base;
     static char buf[LK_MAX_WORD_LEN], tmp[LK_MAX_WORD_LEN];
     static char base_unstressed[LK_MAX_WORD_LEN];
 
-    if (!lk_is_dict_valid(dict))
-        return LK_INVALID_ARG;
+    lk_result res = lk_destress(base->word, base_unstressed, LK_MAX_WORD_LEN);
+    if (res != LK_OK)
+        return res;
 
-    if (info == NULL)
+    while (start && *spc) {
+        start = strchr(spc, ' ');
+        size_t len = (start == NULL)? strlen(spc) : start - spc;
+        if (len == 0) {
+            spc = skip_spaces(start);
+            continue;
+        }
+
+        if (len >= LK_MAX_WORD_LEN)
+            return LK_BUFFER_SMALL;
+
+        strncpy(tmp, spc, len);
+        tmp[len] = '\0';
+
+        const char *chr = lk_detect_special_char(tmp);
+        if (chr == NULL) {
+            strcpy(buf, tmp);
+        } else {
+            char c = *chr;
+            lk_result repl = lk_replace_special_char(tmp, c, buf,
+                                base, base_unstressed, last_full);
+
+            if (repl == LK_OK && c == '@') {
+                repl = lk_put_stress(buf, LK_STRESS_DEFAULT, tmp, LK_MAX_WORD_LEN);
+                if (repl == LK_OK)
+                    strcpy(buf, tmp);
+            }
+
+            if (repl != LK_OK)
+                return repl;
+        }
+
+        struct lk_word *out = lk_add_form_as_is(dict, buf, base, ab);
+        if (out == NULL)
+            return LK_OUT_OF_MEMORY;
+
+        last_full = out;
+        spc = skip_spaces(start);
+    }
+
+    return LK_OK;
+}
+
+static lk_result lk_read_base_form(struct lk_dictionary *dict, const char *s,
+        struct lk_word *base, lk_ablaut ab) {
+    char *start = strchr(s, ' ');
+    size_t len = (start == NULL)? strlen(s) : start - s;
+    if (len == 0) {
+        free(base->contracted);
+        free(base);
+        return LK_INVALID_STRING;
+    }
+    base->word = (char*)calloc(len + 1, sizeof(char));
+    if (base->word == NULL) {
+        free(base->contracted);
+        free(base);
+        return LK_OUT_OF_MEMORY;
+    }
+    strncpy(base->word, s, len);
+
+    lk_result res = dict_add_word(dict, base);
+    if (res == LK_OK && ab != LK_ABLAUT_0)
+        res = dict_add_ablaut(dict, base, ab);
+    if (res == LK_OK)
+        res = add_all_forms_to_dict(dict, base, ab);
+
+    return res;
+}
+
+static const char* lk_read_ablaut_and_contraction(const char *info,
+        struct lk_word *base, lk_ablaut *ab, lk_result *res) {
+    *res = LK_OK;
+    if (*info != ':')
+        return skip_spaces(info);
+
+    /* ablaut or contraction */
+    info++;
+    if (strchr("SITR", base->wtype) == NULL) {
+        *ab = lk_ablaut_from_string(info);
+        if (*info)
+            info++;
+
+        return skip_spaces(info);
+    } else {
+        /* contracted form */
+        const char *spc = strchr(info, ' ');
+        if (spc == NULL) {
+            free(base);
+            *res = LK_INVALID_STRING;
+            return NULL;
+        }
+        size_t len = spc - info;
+        if (len != 0) {
+            base->contracted = (char *)calloc(len + 1, sizeof(char));
+            if (base->contracted == NULL) {
+                free(base);
+                *res = LK_OUT_OF_MEMORY;
+                return NULL;
+            }
+            strncpy(base->contracted, info, len);
+        }
+
+        return skip_spaces(spc);
+    }
+}
+
+lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
+    static char buf[LK_MAX_WORD_LEN], tmp[LK_MAX_WORD_LEN];
+
+    if (!lk_is_dict_valid(dict) || info == NULL)
         return LK_INVALID_ARG;
 
     if (*info == '#')
@@ -658,164 +854,21 @@ lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
     base->wtype = *info++;
     if (base->wtype >= 'a' && base->wtype <= 'z')
         base->wtype = base->wtype - 'a' + 'A';
-    if (*info == ':') {
-        /* ablaut or contraction */
-        info++;
-        if (strchr("SITR", base->wtype) == NULL) {
-            /* ablauting */
-            switch (*info) {
-                case 'A': case 'a':
-                    ab = LK_ABLAUT_A;
-                    break;
-                case 'E': case 'e':
-                    ab = LK_ABLAUT_E;
-                    break;
-                case 'N': case 'n':
-                    ab = LK_ABLAUT_N;
-                    break;
-            }
-            if (*info)
-                info++;
-
-            spc = skip_spaces(info);
-        } else {
-            /* contracted form */
-            spc = strchr(info, ' ');
-            if (spc == NULL) {
-                free(base);
-                return LK_INVALID_STRING;
-            }
-            len = spc - info;
-            if (len != 0) {
-                base->contracted = (char *)calloc(len + 1, sizeof(char));
-                if (base->contracted == NULL) {
-                    free(base);
-                    return LK_OUT_OF_MEMORY;
-                }
-                strncpy(base->contracted, info, len);
-            }
-
-            spc = skip_spaces(spc);
-        }
-    } else {
-        spc = skip_spaces(info);
-    }
+    lk_result res;
+    spc = lk_read_ablaut_and_contraction(info, base, &ab, &res);
+    if (spc == NULL)
+        return res;
 
     /* read the word base form */
-    char *start = strchr(spc, ' ');
-    len = (start == NULL)? strlen(spc) : start - spc;
-    if (len == 0) {
-        free(base->contracted);
-        free(base);
-        return LK_INVALID_STRING;
-    }
-    base->word = (char*)calloc(len + 1, sizeof(char));
-    if (base->word == NULL) {
-        free(base->contracted);
-        free(base);
-        return LK_OUT_OF_MEMORY;
-    }
-    strncpy(base->word, spc, len);
-    dict_add_word(dict, base);
-    if (ab != LK_ABLAUT_0) {
-        dict_add_ablaut(dict, base, ab);
-    }
-    lk_destress(base->word, base_unstressed, LK_MAX_WORD_LEN);
-    lk_result suf_res = add_all_forms_to_dict(dict, base, ab);
-    if (suf_res != LK_OK)
-        return suf_res;
+    res = lk_read_base_form(dict, spc, base, ab);
+    if (res != LK_OK)
+        return res;
 
+    char *start = strchr(spc, ' ');
     if (start == NULL)
         return LK_OK;
 
-    spc = skip_spaces(start);
-    struct lk_word *last_full = base;
-    while (*spc) {
-        start = strchr(spc, ' ');
-        len = (start == NULL)? strlen(spc) : start - spc;
-        if (len == 0) {
-            spc = skip_spaces(start);
-            continue;
-        }
-
-        if (len >= LK_MAX_WORD_LEN)
-            return LK_BUFFER_SMALL;
-
-        strncpy(tmp, spc, len);
-        tmp[len] = '\0';
-
-        const char *chr;
-        char c = ' ';
-        if ((chr = strchr(tmp, '~')) == NULL) {
-            if ((chr = strchr(tmp, '@')) == NULL) {
-                if ((chr = strchr(tmp, '%')) == NULL) {
-                }
-            }
-        }
-        if (chr == NULL) {
-            strcpy(buf, tmp);
-        } else {
-            c = *chr;
-            len = chr - tmp;
-            if (len >= LK_MAX_WORD_LEN)
-                return LK_BUFFER_SMALL;
-            if (len > 0)
-                strncpy(buf, tmp, len);
-
-            buf[len] = '\0';
-            switch (c) {
-                case '~':
-                    if (len + strlen(base->word) >= LK_MAX_WORD_LEN)
-                        return LK_BUFFER_SMALL;
-                    strcat(buf, base->word);
-                    break;
-                case '@':
-                    if (len + strlen(base_unstressed) >= LK_MAX_WORD_LEN)
-                        return LK_BUFFER_SMALL;
-                    strcat(buf, base_unstressed);
-                    break;
-                case '%':
-                    if (len + strlen(last_full->word) >= LK_MAX_WORD_LEN)
-                        return LK_BUFFER_SMALL;
-                    strcat(buf, last_full->word);
-                    break;
-            }
-            chr++;
-            if (strlen(buf) + strlen(chr) >= LK_MAX_WORD_LEN)
-                return LK_BUFFER_SMALL;
-            strcat(buf, chr);
-
-            if (c == '@') {
-                lk_result res = lk_put_stress(buf, LK_STRESS_DEFAULT, tmp, LK_MAX_WORD_LEN);
-                if (res != LK_OK)
-                    return res;
-                strcpy(buf, tmp);
-            }
-        }
-
-        out = (struct lk_word*)calloc(1, sizeof(struct lk_word));
-        if (out == NULL)
-            return LK_OUT_OF_MEMORY;
-        out->word = (char *)calloc(1, strlen(buf) + 1);
-        if (out->word == NULL) {
-            free(out);
-            return LK_OUT_OF_MEMORY;
-        }
-        strcpy(out->word, buf);
-        out->base = base;
-        out->wtype = base->wtype;
-        dict_add_word(dict, out);
-        last_full = out;
-        lk_result suf_res = add_all_forms_to_dict(dict, out, ab);
-        if (suf_res != LK_OK)
-            return suf_res;
-
-        if (start == NULL)
-            break;
-        spc = skip_spaces(start);
-    }
-
-    return LK_OK;
+    return lk_iterate_forms(dict, start, base, ab);
 }
 
 int lk_is_dict_valid(const struct lk_dictionary *dict) {
