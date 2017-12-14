@@ -25,6 +25,13 @@
  * ' - 700 - ʼ
  */
 
+typedef enum {
+    LK_STATE_SKIP_WHITE,
+    LK_STATE_GOBBLE,
+    LK_STATE_QUOTE,
+    LK_STATE_DONE,
+} lk_state;
+
 /* vowels must go first in lk_low_case & lk_up_case arrays */
 const utf8proc_uint32_t lk_low_case[] = {
     LK_A_LOW, LK_O_LOW, LK_E_LOW, LK_I_LOW, LK_U_LOW,

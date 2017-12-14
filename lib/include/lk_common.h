@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#define BUFFER_SIZE 65536
 #define LK_STRESS_DEFAULT 1
+#define LK_MAX_WORD_LEN 128
 
 typedef enum {
     LK_OK,
@@ -39,13 +39,6 @@ typedef enum {
     LK_ABLAUT_E,
     LK_ABLAUT_N,
 } lk_ablaut;
-
-typedef enum {
-    LK_STATE_SKIP_WHITE,
-    LK_STATE_GOBBLE,
-    LK_STATE_QUOTE,
-    LK_STATE_DONE,
-} lk_state;
 
 #define LK_A_UP 193
 #define LK_A_LOW 225

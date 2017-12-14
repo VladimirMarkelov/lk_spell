@@ -15,8 +15,6 @@
 #include "lk_utils.h"
 #include "lk_tree.h"
 
-#define LK_MAX_WORD_LEN 256
-
 struct lk_word {
     struct lk_word *base;
     struct lk_word *next;

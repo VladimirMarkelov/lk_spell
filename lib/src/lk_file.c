@@ -8,6 +8,8 @@
 #include "lk_common.h"
 #include "lk_file.h"
 
+#define LK_BUFFER_SIZE 65536
+
 struct lk_file {
     FILE* fh;
     char *buffer;
@@ -21,7 +23,7 @@ struct lk_file* lk_file_open(const char* path) {
     if (!f)
         return NULL;
 
-    f->buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+    f->buffer = (char *)malloc(sizeof(char) * LK_BUFFER_SIZE);
     if (!f->buffer) {
         free(f);
         return NULL;
@@ -29,7 +31,7 @@ struct lk_file* lk_file_open(const char* path) {
 
     f->fh = 0;
     f->pos = 0;
-    f->cap = BUFFER_SIZE;
+    f->cap = LK_BUFFER_SIZE;
     f->len = 0;
 #ifdef _WIN32
     wchar_t *wpath;
