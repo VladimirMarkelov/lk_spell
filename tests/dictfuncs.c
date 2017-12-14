@@ -44,7 +44,7 @@ const char* test_parse() {
     ut_assert("Ablauting parsed", r == LK_OK && lk_word_count(dict) == 5);
     r = lk_parse_word("S:sab sapA", dict);
     ut_assert("Word #2 - with unstressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 9);
-    r = lk_parse_word("S ditÍŋ", dict);
+    r = lk_parse_word("S ditÁŋ", dict);
     ut_assert("Word #3 - witn stressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 13);
     r = lk_parse_word("S kárAŋ mikárAŋ", dict);
     ut_assert("Word #4 - unstressed ablaut 2 forms parsed", r == LK_OK && lk_word_count(dict) == 21);

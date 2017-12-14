@@ -232,10 +232,8 @@ int lk_has_ablaut(const char *word) {
 
     if (lk_ends_with(word, "A")
         || lk_ends_with(word, "Aŋ")
-        || lk_ends_with(word, "Iŋ")
         || lk_ends_with(word, "Á")
         || lk_ends_with(word, "Áŋ")
-        || lk_ends_with(word, "Íŋ")
         )
         return 1;
 
@@ -248,7 +246,6 @@ int lk_is_ablaut_stressed(const char *word) {
 
     if (lk_ends_with(word, "Á")
         || lk_ends_with(word, "Áŋ")
-        || lk_ends_with(word, "Íŋ")
         )
         return 1;
 

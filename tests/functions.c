@@ -156,7 +156,7 @@ const char* test_has_ablaut() {
         "čik'alAŊ",
         "čik'alIŋ",
     };
-    int res[] = {0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1};
+    int res[] = {0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0};
 
     for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
         int r = lk_has_ablaut(a[i]);

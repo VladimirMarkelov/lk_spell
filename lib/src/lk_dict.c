@@ -51,7 +51,7 @@ static void lk_copy_word_base(const char *word, char *out) {
     while (*usrc) {
         size_t len = utf8proc_iterate(usrc, -1, &cp);
         usrc += len;
-        if (cp == 'A' || cp == 'I' || cp == LK_A_UP || cp == LK_I_UP)
+        if (cp == 'A' || cp == LK_A_UP)
             break;
 
         len = utf8proc_encode_char(cp, udst);
