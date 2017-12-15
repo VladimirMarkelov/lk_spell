@@ -10,6 +10,9 @@
 #include "lk_common.h"
 #include "lk_utils.h"
 
+/* A table of UNICODE characters and their code
+ * Just to keep the information somewhere at hand
+ */
 /* utf8 char -> uint32
  * á - 225 * Á - 193
  * ó - 243 * Ó - 211
@@ -25,30 +28,40 @@
  * ' - 700 - ʼ
  */
 
+/**
+ * @enum lk_state
+ * States for state machine to look for the next or beginning of the current one
+ */
 typedef enum {
-    LK_STATE_SKIP_WHITE,
-    LK_STATE_GOBBLE,
-    LK_STATE_QUOTE,
-    LK_STATE_DONE,
+    LK_STATE_SKIP_WHITE, /* skipping white spaces */
+    LK_STATE_GOBBLE, /* the word is found so looking for the word end/start */
+    LK_STATE_QUOTE, /* a possible glottal stop is detected */
+    LK_STATE_DONE, /* parsing done */
 } lk_state;
 
-/* vowels must go first in lk_low_case & lk_up_case arrays */
+
+/*
+ * All three array below must have the same number of elements in the same
+ *  order. Vowels must go first.
+ */
+/* Array contains lowcase letters with diacritic marks as UNICODE characters */
 const utf8proc_uint32_t lk_low_case[] = {
     LK_A_LOW, LK_O_LOW, LK_E_LOW, LK_I_LOW, LK_U_LOW,
     LK_N_LOW, LK_C_LOW, LK_Z_LOW, LK_H_LOW, LK_G_LOW, LK_S_LOW,
 };
+/* Array contains upcase letters with diacritic marks as UNICODE characters */
 const utf8proc_uint32_t lk_up_case[] = {
     LK_A_UP, LK_O_UP, LK_E_UP, LK_I_UP, LK_U_UP,
     LK_N_UP, LK_C_UP, LK_Z_UP, LK_H_UP, LK_G_UP, LK_S_UP,
 };
-/*
- * to convert lk_low_case to ascii symbol. Length must equal length of lk_low_case
- * and the order must the same as in lk_low_case
-*/
+/* Array contains ASCII letters that represent the same characters as two
+ * previous array but with diacritic marks removed
+ */
 const utf8proc_int32_t lk_low_ascii[] = {
     'a', 'o', 'e', 'i', 'u', 'n', 'c', 'z', 'h', 'g', 's',
 };
 
+/* a function type to use in string processing */
 typedef utf8proc_int32_t (*ustr_func) (utf8proc_int32_t);
 
 static int lk_is_stressed_vowel(utf8proc_uint32_t cp) {
@@ -69,6 +82,7 @@ static int lk_is_glottal_stop(utf8proc_uint32_t cp) {
     return (cp == LK_QUOTE || cp == '\'' || cp == '`');
 }
 
+/* remove diacritic mark from a letter */
 static utf8proc_uint32_t lk_char_to_ascii(utf8proc_uint32_t cp) {
     if (cp == '`' || cp == LK_QUOTE)
         return '\'';
@@ -81,6 +95,7 @@ static utf8proc_uint32_t lk_char_to_ascii(utf8proc_uint32_t cp) {
     return cp;
 }
 
+/* add diacritic mark to a vowel */
 static utf8proc_uint32_t lk_unstress_to_stress(utf8proc_uint32_t cp) {
     switch (cp) {
         case 'a':
@@ -97,6 +112,7 @@ static utf8proc_uint32_t lk_unstress_to_stress(utf8proc_uint32_t cp) {
     return cp;
 }
 
+/* remove diacritic mark from a vowel */
 static utf8proc_uint32_t lk_stress_to_unstress(utf8proc_uint32_t cp) {
     if (cp < 128)
         return cp;
@@ -116,6 +132,7 @@ static utf8proc_uint32_t lk_stress_to_unstress(utf8proc_uint32_t cp) {
     return cp;
 }
 
+/* length of a UTF8 character in bytes */
 static size_t cp_length(utf8proc_uint32_t cp) {
     if (cp < 0) {
         return 0;
@@ -132,6 +149,7 @@ static size_t cp_length(utf8proc_uint32_t cp) {
     }
 }
 
+/* run a function for the whole string - used by ustr_lowcase etc */
 static lk_result process_ustr(char *src, ustr_func fn) {
     if (src == NULL)
         return LK_OK;
@@ -159,10 +177,19 @@ static lk_result process_ustr(char *src, ustr_func fn) {
     return LK_OK;
 }
 
+/* convert a string to low case inplace */
 static lk_result ustr_lowcase(char *src) {
     return process_ustr(src, utf8proc_tolower);
 }
 
+/**
+ * Checks if the string ends with certain substring
+ *
+ * @param[in] orig is a string to check
+ * @param[in] cmp is a substring to look at the string end
+ *
+ * @return 1 the string ends with the substring and 0 otherwise
+ */
 int lk_ends_with(const char *orig, const char *cmp) {
     if (orig == NULL && cmp == NULL)
         return 1;
@@ -208,6 +235,24 @@ static lk_result fix_glottal_stop(const char *word, char *out, size_t out_sz) {
     return LK_OK;
 }
 
+/**
+ * Converts a string to lowcase. All single quotes and apostrophes are replaced
+ *  with glottal stop as well
+ *
+ * @param[in] word is the original string
+ * @param[out] out is the output buffer to put lowcased string
+ * @param[in] out_sz the output buffer capacity
+ *
+ * @return
+ *  LK_OK - successfull operation
+ *  LK_INVALID_ARG - if word is NULL or output buffer is the same as
+ *   the original string. The latest check is done because it is not possible
+ *   to convert to lowcase inplace since it may convert quote mark to glottal
+ *   stop that is 2 bytes long
+ *  LK_BUFFER_SMALL - either out is NULL or its size is too small to keep
+ *   the result
+ *  LK_INVALID_STRING - the original string is not correct UTF8 sequence
+ */
 lk_result lk_to_low_case(const char *word, char *out, size_t out_sz) {
     if (word == NULL)
         return LK_INVALID_ARG;
@@ -226,6 +271,9 @@ lk_result lk_to_low_case(const char *word, char *out, size_t out_sz) {
     return ustr_lowcase(out);
 }
 
+/**
+ * Returns 1 if the word ends with ablaut, 0 - otherwise
+ */
 int lk_has_ablaut(const char *word) {
     if (word == NULL)
         return 0;
@@ -240,6 +288,9 @@ int lk_has_ablaut(const char *word) {
     return 0;
 }
 
+/**
+ * Returns 1 if the word ends with ablaut and it is stressed, 0 - otherwise
+ */
 int lk_is_ablaut_stressed(const char *word) {
     if (word == NULL)
         return 0;
@@ -252,6 +303,10 @@ int lk_is_ablaut_stressed(const char *word) {
     return 0;
 }
 
+/**
+ * Returns the number of stressed vowels in the word.
+ * May return 0 if the word is not correct UTF8 sequence
+ */
 int lk_stressed_vowels_no(const char *word) {
     if (word == NULL)
         return 0;
@@ -274,6 +329,10 @@ int lk_stressed_vowels_no(const char *word) {
     return cnt;
 }
 
+/**
+ * Returns the total number of vowels in the word.
+ * May return 0 if the word is not correct UTF8 sequence
+ */
 int lk_vowels_no(const char *word) {
     if (word == NULL)
         return 0;
@@ -296,6 +355,9 @@ int lk_vowels_no(const char *word) {
     return cnt;
 }
 
+/**
+ * Returns 1 if the word contains only ASCII charactes, and 0 - otherwise
+ */
 int lk_is_ascii(const char *word) {
     if (word == NULL)
         return 0;
@@ -314,6 +376,21 @@ int lk_is_ascii(const char *word) {
     return 1;
 }
 
+/**
+ * Converts a string to ASCII: diacritic marks are removed and glottal stop
+ *  are replaced with single quote mark
+ *
+ * @param[in] word is the original string
+ * @param[out] out is the output buffer to put lowcased string
+ * @param[in] out_sz the output buffer capacity
+ *
+ * @return
+ *  LK_OK - successfull operation
+ *  LK_INVALID_ARG - if word is NULL or out is NULL
+ *  LK_BUFFER_SMALL - either out is NULL or its size is too small to keep
+ *   the result
+ *  LK_INVALID_STRING - the original string is not correct UTF8 sequence
+ */
 lk_result lk_to_ascii(const char *word, char *out, size_t out_sz) {
     if (word == NULL || out == NULL)
         return LK_INVALID_ARG;
@@ -341,6 +418,20 @@ lk_result lk_to_ascii(const char *word, char *out, size_t out_sz) {
     return LK_OK;
 }
 
+/**
+ * Remove diacritic marks from all vowels in the string
+ *
+ * @param[in] word is the original string
+ * @param[out] out is the output buffer to put lowcased string
+ * @param[in] out_sz the output buffer capacity
+ *
+ * @return
+ *  LK_OK - successfull operation
+ *  LK_INVALID_ARG - if word is NULL or out is NULL
+ *  LK_BUFFER_SMALL - either out is NULL or its size is too small to keep
+ *   the result
+ *  LK_INVALID_STRING - the original string is not correct UTF8 sequence
+ */
 lk_result lk_destress(const char *word, char *out, size_t out_sz) {
     if (word == NULL || out == NULL)
         return LK_INVALID_ARG;
@@ -368,33 +459,24 @@ lk_result lk_destress(const char *word, char *out, size_t out_sz) {
     return LK_OK;
 }
 
-size_t lk_first_stressed_vowel(const char *word) {
-    if (word == NULL)
-        return 0;
-
-    int no = 0;
-    utf8proc_uint8_t *uw = (utf8proc_uint8_t*)word;
-    utf8proc_int32_t cp;
-
-    while (*uw) {
-        size_t len = utf8proc_iterate(uw, -1, &cp);
-        if (cp == -1)
-            return 0;
-
-        if (lk_is_unstressed_vowel(cp)) {
-            no++;
-        } else if (lk_is_stressed_vowel(cp)) {
-            return no + 1;
-        }
-
-        uw += len;
-    }
-
-    return 0;
-}
-
+/**
+ * Put stress on a vowel in the string
+ *
+ * @param[in] word the original string
+ * @param[in] pos the ordinal number of the vowel to put stress (count starts
+ *  from 0). If pos is negative then the default position is used (see,
+ *  define LK_STRESS_DEFAULT). If pos is greater than the number of vowel then
+ *  the latest gets stressed
+ *
+ * @return the result of operation:
+ *  LK_OK - the stress put successfully
+ *  LK_INVALID_ARG - either word or out is NULL, or pos greater than 10 or
+ *   out equals word, or the word does not contain any vowel
+ *  LK_BUFFER_SMALL - the output buffer is too small to keep a new string
+ *  LK_INVALID_STRING - the string is not valid UTF8 sequence
+ */
 lk_result lk_put_stress(const char *word, int pos, char *out, size_t out_sz) {
-    if (word == NULL || out == NULL || pos < 0 || pos > 10 || word == out)
+    if (word == NULL || out == NULL || pos > 10 || word == out)
         return LK_INVALID_ARG;
     if (out_sz == 0)
         return LK_BUFFER_SMALL;
@@ -439,6 +521,16 @@ lk_result lk_put_stress(const char *word, int pos, char *out, size_t out_sz) {
     return pos < 0 ? LK_OK : LK_INVALID_ARG;
 }
 
+/**
+ * Removes all glotal stops from the string. Glottal stop is one of LK_QUOTE,
+ *  single quote mark or apostroph
+ *
+ * @return the result of operation:
+ *  LK_OK - the stress put successfully
+ *  LK_INVALID_ARG - either word or out is NULL
+ *  LK_BUFFER_SMALL - the output buffer is too small to keep a new string
+ *  LK_INVALID_STRING - the string is not valid UTF8 sequence
+ */
 lk_result lk_remove_glottal_stop(const char *word, char *out, size_t out_sz) {
     if (word == NULL || out == NULL)
         return LK_INVALID_ARG;
@@ -466,6 +558,10 @@ lk_result lk_remove_glottal_stop(const char *word, char *out, size_t out_sz) {
     return LK_OK;
 }
 
+/**
+ * Returns 1 if a string contains glotal stop. Glottal stop is one of LK_QUOTE,
+ *  single quote mark or apostroph.
+ */
 int lk_has_glottal_stop(const char *word) {
     if (word == NULL)
         return 0;
@@ -503,6 +599,33 @@ static int is_lk_char(utf8proc_uint32_t c) {
     return 0;
 }
 
+/**
+ * Looks for the beginning of a word that contains the byte number pos in it
+ *  or a word that preceeds this byte if pos points to a non-letter character.
+ *
+ *  @param[in] str the string to look for a word
+ *  @param[in] pos the position(the byte number) to start look for a word. The
+ *   function looks for a word in reverse way (towards the string start from
+ *   the initial position). It is OK if pos points to a byte in the middle of
+ *   a UTF8 character
+ *
+ * @return the pointer to a character that is the first character of a word,
+ *  or NULL in case of it is impossible(str is NULL, or str is not valid UTF8
+ *  sequence, or between string start and given position there is no letters,
+ *  eg. pos == 0 and the first character of str is double quote or digit)
+ *
+ * Examples:
+ *    lk_word_begin("test str", 4) -> pointer to the first character, because
+ *     4th byte is space, and moving backwards gets to the string beginning
+ *    lk_word_begin("test str", 5) -> pointer to "str", because 5th byte is
+ *    the character that starts the second word
+ *
+ * How it works:
+ *  1. skips all non-letter characters backwards
+ *  2. skips all letter-like characters backwards
+ *  3. returns either the pointer to original string or to the first letter-like
+ *     character that follows the current whitespace
+ */
 const char* lk_word_begin(const char *str, size_t pos) {
     if (str == NULL || pos >= strlen(str))
         return NULL;
@@ -579,10 +702,32 @@ const char* lk_word_begin(const char *str, size_t pos) {
     return NULL;
 }
 
+/**
+ * Reads the next word in the string starting from the string beginning.
+ *
+ * @param[in] str is the string to look for a word
+ * @param[out] len is filled with the length in bytes of the found word. The
+ *  argument can be NULL - in this case the length of the current word is not
+ *  returned to a caller.
+ *
+ * @return pointer to the first character of the found word or NULL in case of
+ *  any error (str is NULL or no word was found in the string, e.g. is contains
+ *  only digits. So, if the function returns non-NULL result you can read the
+ *  found word with strncpy(<dest>, <result>, len)
+ *
+ * How it works:
+ *  1. skips all non-letter characters
+ *  2. marks the current character as the word beginning
+ *  3. while str is not ended and the next character is letter-like moves forward
+ *  4. returns the pointer to the word first character and the length of the word
+ */
 const char* lk_next_word(const char *str, size_t *len) {
     utf8proc_int32_t cp;
     utf8proc_uint8_t *usrc = (utf8proc_uint8_t *)str, *save;
     const char *wstart = NULL;
+
+    if (str == NULL)
+        return NULL;
 
     if (len)
         *len = 0;

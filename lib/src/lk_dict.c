@@ -15,14 +15,23 @@
 #include "lk_utils.h"
 #include "lk_tree.h"
 
+/**
+ * @struct lk_word
+ * Keeps an information about one word form, used by lk_dictionary
+ */
 struct lk_word {
-    struct lk_word *base;
-    struct lk_word *next;
+    struct lk_word *base; /*!< pointer to base word - used for ablauts its */
+    struct lk_word *next; /*!< pointer to next word in the dictionary */
 
-    char *word;
-    char *contracted;
-    int wtype;
+    char *word; /*!< the word form */
+    char *contracted; /*!< if it is base form and the word has contracted form
+                        then the field contains contacted form */
+    int wtype; /*!< the word type - verb, noun etc */
 };
+
+/**
+ * @struct lk_ablauting
+ * Keeps a word and type of ablaut it follows */
 struct lk_ablauting {
     struct lk_ablauting *next;
 
@@ -30,14 +39,24 @@ struct lk_ablauting {
     lk_ablaut ablaut;
 };
 
+/**
+ * @struct lk_dictionary
+ * The storage for all word forms and ablauts
+ */
 struct lk_dictionary {
-    struct lk_word *head;
-    struct lk_word *tail;
-    struct lk_ablauting *ab_head;
+    struct lk_word *head; /*!< the first dictionary word */
+    struct lk_word *tail; /*!< the last dictionary word, used by add-word
+                            feature for best performance */
+    struct lk_ablauting *ab_head; /*!< the first word that follows ablaut */
     struct lk_ablauting *ab_tail;
-    struct lk_tree *tree;
+    struct lk_tree *tree; /*!< suffix tree for quick lookup */
 };
 
+/**
+ * @struct lk_word_form
+ * A suggestion for a incorrect word. Used internally by dictionary lookup
+ *  to avoid extra malloc calls
+ */
 struct lk_word_form {
     char form[LK_MAX_WORD_LEN];
     struct lk_word_form *next;
@@ -96,6 +115,12 @@ static void lk_generate_ablauted(const char *word, lk_ablaut ablaut, char *out) 
     lk_append_ablaut(out, ablaut, is_ab_stressed);
 }
 
+/**
+ * Lookup the word in a dictionary and returns th elist of all possible words
+ *  that can replace the original one if it is incorrect
+ *
+ *  @return NULL if no suggestion was found
+ */
 const struct lk_word_ptr* lk_dict_find_word(const struct lk_dictionary *dict, const char *word) {
     if (!lk_is_dict_valid(dict) || word == NULL)
         return NULL;
@@ -251,6 +276,44 @@ static void lk_free_correct_ablauts(struct lk_word_form *forms) {
     }
 }
 
+/**
+ * Returns a list of words that may be a valid form of the original one. Do not
+ *  free the list manually, use lk_exact_lookup_free.
+ *
+ * @param[in] dict is initialized dictionary to lookup
+ * @param[in] word is the word to check whether it has correct spelling
+ * @param[in] next_word is the word that follows the checked one (passing
+ *   empty string or string that starts from '.', '!', '?', or ';' means
+ *   that the word is the last word of a sentence. It is used ony to check
+ *   if the word uses correct ablaut. You can pass NULL to skip ablaut check
+ * @param[out] count is the total number of suggestions (it includes separators,
+ *  so be careful when showing the list of suggestions to a user. If count is
+ *  NULL then the function does nothing and returns immediately with NULL result
+ *
+ * @returns a list of suggestions or NULL
+ *   NULL is returned in two cases:
+ *    if count is zero it means that the spelling is correct and the word
+ *     was found in dictionry
+ *    if count is negative then an error occured while looking up for the
+ *     word and count contains the negated lk_result (mostly it returns
+ *     -LK_OUT_OF_MEMORY or -LK_INVALID_ARG)
+ *  Some pointer:
+ *   count contains the number of suggestions
+ *
+ * result format:
+ *  the first section contains the list of correct words to replace the original one
+ *  the separator "-" - used to divide suggestions from correct ablaut forms
+ *  the second section is the list of corrected ablaut if the word is ablautable
+ *  Notes:
+ *   1. If next_word is NULL then separator and the second section do not
+ *    exist in the response because no check for correct ablaut is done
+ *   2. Section first can be omitted if only ablaut is incorrect. In this case
+ *    the first suggestion is separator "-"
+ *   3. Even if next_word is not NULL the resonse can contain only the first
+ *    section because the original word is not ablautable or ablaut is correct
+ *
+ * @sa lk_exact_lookup_free
+ */
 char** lk_dict_exact_lookup(const struct lk_dictionary *dict, const char *word, const char *next_word, int *count) {
     char** suggestions = NULL;
     static char unstressed[LK_MAX_WORD_LEN];
@@ -366,6 +429,12 @@ char** lk_dict_exact_lookup(const struct lk_dictionary *dict, const char *word, 
     return suggestions;
 }
 
+/**
+ * Frees the suggestion list returned by lk_dict_exact_lookup.
+ * Function does nothing if lookup is NULL
+ *
+ * @sa lk_dict_exact_lookup
+ */
 void lk_exact_lookup_free(char** lookup) {
     if (lookup == NULL)
         return;
@@ -378,6 +447,11 @@ void lk_exact_lookup_free(char** lookup) {
     free(lookup);
 }
 
+/**
+ * Lookup the word in the dictionary and if it is found the function returns
+ *  type of ablaut the word follows.
+ * If the word is not found then no ablaut is returned (LK_ABLAUT_0)
+ */
 lk_ablaut lk_dict_check_ablaut(const struct lk_dictionary *dict, const char *word) {
     lk_ablaut ab = LK_ABLAUT_0;
     if (!lk_is_dict_valid(dict) || word == NULL)
@@ -808,6 +882,63 @@ static const char* lk_read_ablaut_and_contraction(const char *info,
     }
 }
 
+/**
+ * Parses the string and if it correct word arcticle adds the word information
+ *  to the dictionary.
+ *
+ * @param[in] dict must be initialized before calling the function. Otherwize
+ *  the function returns LK_INVALID_ARG
+ * @param[in] info a word article. Please see article format below
+ *
+ * @return the result of adding word to dictionary:
+ *  LK_OK - the word was successfully added to the dictionary
+ *  LK_INVALID_ARG - dictionary is not initialized or info is NULL
+ *  LK_OUT_OF_MEMORY - failed to allocate memory
+ *  LK_INVALID_STRING - info is not UTF8-encoded string or string does not
+ *   have correct format
+ *  LK_COMMENT - the string is a comment line, so it was skipped and nothing
+ *   was added to the dictionary
+ *
+ * The arcticle format:
+ *  if the string starts with '#' it means the line is a comment and should be skipped
+ *  The line starts with character that means a word type: verb, noun etc (Please
+ *   see lk_word_type for available type. Anyway, at this moment only verb (S, T, I)
+ *   types are processed in a special way. So, you can use any character as the
+ *   type (except # that is comment) and it will works.
+ *   The type is case-insensitive.
+ *  After the type a colon(':') may follow. It separates a type from some special
+ *   stuff of the word. For verb types after colon the contracted form of the
+ *   verb follows, for other types the type of ablaut that the word wants follows.
+ *   (Please, see lk_ablaut for available ablaut types)
+ *  Colon and contrated form/ablaut type can be omitted (e.g, adverbs usually
+ *   has nothing of them)
+ *  Then a list of all word forms follows separated with spaces. A list of must
+ *   contain at list one form, otherwise LK_INVALID_STRING returned. The first
+ *   form of a verb-type word must be infinitive (3rd person singular). Other
+ *   forms may follow in any order at this moment.
+ *   There are some ways to shorten the next form:
+ *     ~ is replaced with infinitive as is
+ *     @ is replaced with infitive and then the form is restressed: the second vowel gets stressed
+ *     % is replace with the previous form
+ *   Example:
+ *    "s sapá ~pi wa@ %pi" generates the following list of words:
+ *    [ 'sapá', 'sapápi', 'wasápa', 'wasápapi' ]
+ * Note: the number of added words after one call may be much greater than
+ *  the number of words in the article. What other form are generated and added:
+ *   the form from article itself
+ *   the unstressed form (if it does not equal the original)
+ *   the asciified form (if it does not equal the original). Asciified form
+ *    is the form with removed diacritic marks and glottal stop replaced with single quote
+ *   the form with glottal stop removed (rare case)
+ *   if it is a verb and is ablautable then all ablauts are added (including their
+ *    forms above) - every ablautable verb generates three more forms
+ *
+ * @sa lk_word_type
+ * @sa lk_ablaut
+ * @sa lk_read_dictionary
+ * @sa lk_dict_close
+ * @sa lk_dict_init
+ */
 lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
     if (!lk_is_dict_valid(dict) || info == NULL)
         return LK_INVALID_ARG;
@@ -841,6 +972,9 @@ lk_result lk_parse_word(const char *info, struct lk_dictionary* dict) {
     return lk_iterate_forms(dict, start, base, ab);
 }
 
+/**
+ * Simple check if the dictionary was initialized
+ */
 int lk_is_dict_valid(const struct lk_dictionary *dict) {
     if (dict == NULL)
         return 0;
@@ -851,6 +985,10 @@ int lk_is_dict_valid(const struct lk_dictionary *dict) {
     return 1;
 }
 
+/**
+ * @return the number of words in the dictionary including all word forms. So,
+ *  the number can be greater than the number of articles in loaded file
+ */
 size_t lk_word_count(const struct lk_dictionary *dict) {
     if (!lk_is_dict_valid(dict))
         return 0;
@@ -865,6 +1003,14 @@ size_t lk_word_count(const struct lk_dictionary *dict) {
     return cnt;
 }
 
+/**
+ * Allocates resources for the dictionary and initializes all its internal structures.
+ * DO NOT free the pointer manually to avoid memory leaks - use lk_dict_close
+ *
+ * @return pointer to initialized dictionary or NULL is something went wrong
+ *
+ * @sa lk_dict_close
+ */
 struct lk_dictionary* lk_dict_init() {
     struct lk_dictionary *dict = (struct lk_dictionary *)calloc(1, sizeof(*dict));
     if (dict == NULL)
@@ -879,6 +1025,10 @@ struct lk_dictionary* lk_dict_init() {
     return dict;
 }
 
+/**
+ * Frees all resources allocated for the dictionary. If dict is NULL the
+ *  function does nothing
+ */
 void lk_dict_close(struct lk_dictionary* dict) {
     if (dict == NULL)
         return;
@@ -903,6 +1053,24 @@ void lk_dict_close(struct lk_dictionary* dict) {
     free(dict);
 }
 
+/**
+ * Reads dictionary from a text UTF8-encoded without BOM file. If path is NULL
+ *  then the function tries to read filename to open from environment
+ *  variable LK_DICTIONARY.
+ *  If you do not have a file and want to populate the dictionary manually use
+ *   the function lk_parse_word to add a word one by one. Please see the
+ *   required format in lk_parse_word description.
+ *
+ * @param[in] dict must be initialized before calling the function
+ *
+ * @return the result of operation:
+ *  LK_OK - file content was processed successfully
+ *  LK_INVALID_FILE - failed to open file
+ *
+ * @sa lk_dict_init
+ * @sa lk_dict_close
+ * @sa lk_parse_word
+ */
 lk_result lk_read_dictionary(struct lk_dictionary *dict, const char *path) {
     char buf[4096];
     struct lk_file *file = lk_file_open(path);

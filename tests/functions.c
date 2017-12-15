@@ -294,27 +294,6 @@ const char* test_destress() {
     return 0;
 }
 
-const char* test_first_stressed() {
-    char *a[] = {
-        NULL,
-        "á",
-        "a",
-        "čaní",
-        "cáŋug",
-        "aoíuéŋ",
-        "aoiuéŋ",
-        "nothing",
-    };
-    int res[] = {0, 1, 0, 2, 1, 3, 5, 0};
-
-    for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
-        int r = lk_first_stressed_vowel(a[i]);
-        ut_assert(a[i], res[i] == r);
-    }
-
-    return 0;
-}
-
 const char* test_put_stress() {
     char *a[] = {
         NULL,
@@ -485,7 +464,6 @@ const char * run_all_test() {
     ut_run_test("is ascii", test_is_ascii);
     ut_run_test("to ascii", test_to_ascii);
     ut_run_test("destress", test_destress);
-    ut_run_test("first stressed", test_first_stressed);
     ut_run_test("put stress", test_put_stress);
     ut_run_test("remove glottal stop", test_remove_stop);
     ut_run_test("begin of word", test_word_begin);
