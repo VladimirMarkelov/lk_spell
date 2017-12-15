@@ -194,11 +194,12 @@ lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct 
 }
 
 /**
- * Looks for a word in the tree and returns the link to list of structs
- *  associated with the word. Do NOT free the retured list.
+ * Looks for a word in the tree and returns the pointer to internal list of
+ *  structs associated with the word. DO NOT modify or free the list items.
  *
  *  @returns NULL in case of error or if the path was not found in the tree.
- *   In case of success it returns the list of associated structs
+ *   In case of success it returns the list of associated structs.
+ *   DO NOT free or modify the result - it points to internal data.
  */
 const struct lk_word_ptr* lk_tree_search(const struct lk_tree *tree, const char *path) {
     if (tree == NULL || path == NULL || *path == '\0')

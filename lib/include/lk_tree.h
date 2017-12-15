@@ -5,6 +5,13 @@
 extern "C" {
 #endif
 
+/**
+ * \struct lk_word_ptr
+ *
+ * Structure used to keep a list of words associated with a path in the
+ *  suffix tree. Struct lk_word points to one of words inside lk_directory
+ *  structure
+ */
 struct lk_word_ptr {
     const struct lk_word *word;
     struct lk_word_ptr *next;

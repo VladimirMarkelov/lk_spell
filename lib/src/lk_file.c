@@ -27,7 +27,9 @@ struct lk_file {
  * Opens a file and returns a pointer to file reader structure on success.
  * File is always opened for reading in binary mode.
  *
- * @param[in] path is a path to file to read. File name is always UTF8-string
+ * @param[in] path is a path to file to read. File name is always UTF8-string.
+ *  Path can be NULL, in this case the function uses evironment variable
+ *  LK_DICTIONARY as the filename.
  *
  * @return a pointer to allocated structure on success. It must be freed by a
  *  caller. If opening file fails then NULL is returned

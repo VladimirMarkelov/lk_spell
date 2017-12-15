@@ -5,34 +5,52 @@
 extern "C" {
 #endif
 
+/**
+ * default position of the stress in a word. It starts from 0 and equals to
+ *   the ordinal number of a vowel to be marked as stressed
+ */
 #define LK_STRESS_DEFAULT 1
+/**
+ * Maximum length of a word in bytes. 64 bytes must be enough but just in case
+ *  the library uses 128
+ */
 #define LK_MAX_WORD_LEN 128
 
+/** @enum lk_result
+ * Most of the library functions returns lk_result
+ */
 typedef enum {
-    LK_OK,
-    LK_FILE_READ_ERR,
-    LK_EOF,
-    LK_INVALID_FILE,
-    LK_BUFFER_SMALL,
-    LK_INVALID_STRING,
-    LK_INVALID_ARG,
-    LK_OUT_OF_MEMORY,
-    LK_WORD_NOT_FOUND,
-    LK_EXACT_MATCH,
-    LK_INVALID_CONJ,
-    LK_COMMENT,
-    LK_INCOMPLETE_VERB,
+    LK_OK, /*!< Complited successfully */
+    LK_FILE_READ_ERR, /*!< File was opened successfully but read failed */
+    LK_EOF, /*!< End of file reached while reading it */
+    LK_INVALID_FILE, /*!< Failed to open file or file reader struct is invalid */
+    LK_BUFFER_SMALL, /*!< Output buffer size was less than the operation required */
+    LK_INVALID_STRING, /*!< String is not UTF8 encoded one */
+    LK_INVALID_ARG, /*!< Function detects invalid argument (e.g, NULL, invalid struct etc) */
+    LK_OUT_OF_MEMORY, /*!< Failed to allocated memory */
+    LK_WORD_NOT_FOUND, /*!< Suffix tree does not contain the word */
+    LK_EXACT_MATCH, /*!< The word was found in the dictionary */
+    LK_COMMENT, /*!< The parsed line is a comment and was skipped while processing data */
 } lk_result;
 
+/**
+ * @enum lk_word_type
+ * Describe type of the word in dictionary. Also affects data parsing.
+ * At this moment it is used only to distinguish verbs from other parts of speech.
+ */
 typedef enum {
-    LK_STATIC_VERB = 'S',
-    LK_TRANS_VERB = 'T',
-    LK_INTRANS_VERB = 'I',
-    LK_NOUN = 'N',
-    LK_SPEC = '-',
-    LK_ADVERB = 'A',
+    LK_STATIC_VERB = 'S', /*!< Stative verb */
+    LK_TRANS_VERB = 'T', /*!< Transitive verb */
+    LK_INTRANS_VERB = 'I', /*!< Intransitive verb */
+    LK_NOUN = 'N', /*!< Noun */
+    LK_ADVERB = 'A', /*!< Adverb */
+    LK_SPEC = '-', /*!< Other parts of speech (prepositions, conjunctions etc) */
 } lk_word_type;
 
+/**
+ * @enum lk_ablaut
+ * Type of ablaut the word follows
+ */
 typedef enum {
     LK_ABLAUT_0,
     LK_ABLAUT_A,
@@ -40,6 +58,10 @@ typedef enum {
     LK_ABLAUT_N,
 } lk_ablaut;
 
+/**
+ * Predefined constants of UNICODE characters used in the language.
+ * It is standard Latin letters with diacritic marks
+ */
 #define LK_A_UP 193
 #define LK_A_LOW 225
 #define LK_O_UP 211
@@ -63,6 +85,9 @@ typedef enum {
 #define LK_G_LOW 487
 #define LK_S_UP 352
 #define LK_S_LOW 353
+/**
+ * Unicode character for glottal stop
+ */
 #define LK_QUOTE 700
 
 #ifdef __cplusplus
