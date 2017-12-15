@@ -7,12 +7,8 @@ It kind of works but:
 3. Some function are to be removed - now they exist just for debugging
 
 ### TODO
-- [x] Remove unused code
-- [x] Eliminate duplicated code and make some functions smaller
-- [x] Remove debug functions
 - [ ] Add at least small dictionary to the library
-- [ ] Add documentation (both code comments and how to use txt)
-- [x] Use utf8proc as external library
+- [ ] Add documentation about how to use the library
 - [ ] Test on Linux distribution
 - [ ] ? Improve spelling suggestions
 - [ ] ? Optimizations
