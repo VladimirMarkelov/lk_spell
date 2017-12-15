@@ -5,17 +5,36 @@
 #include "lk_common.h"
 #include "lk_tree.h"
 
+/**
+ * @struct lk_leaf
+ * Contains information about a character of a word, a pointer to possible
+ *  character in the same position, and a pointer to the possible next
+ *  character in the word
+ */
 struct lk_leaf {
-    utf8proc_uint32_t c;
-    struct lk_leaf *sibling;
-    struct lk_leaf *next;
-    struct lk_word_ptr *word;
+    utf8proc_uint32_t c;/*!< the UNICODE character */
+    struct lk_leaf *sibling;/*!< another character that can be in the same position */
+    struct lk_leaf *next;/*!< the pointer to character that must follow the current one in a word */
+    struct lk_word_ptr *word;/*!< the pointer to real words in word array of lk_dictionary if the
+                               character is the final letter of a word. If character is in the middle
+                               of a word then the value is NULL */
 };
 
+/**
+ * @struct lk_tree
+ * Suffix tree of all words read from file
+ */
 struct lk_tree {
     struct lk_leaf *head;
 };
 
+/**
+ * Initializes suffix tree
+ *
+ * @return NULL in case of any trouble or pointer lk_tree structure
+ *
+ * @sa lk_tree_free
+ */
 struct lk_tree* lk_tree_init() {
     struct lk_tree *tree = (struct lk_tree*)malloc(sizeof(*tree));
     if (tree == NULL)
@@ -47,6 +66,11 @@ static void free_tree(struct lk_leaf *leaf) {
     }
 }
 
+/**
+ * Frees all resources allocated for the suffix tree
+ *
+ * @sa lk_tree_init
+ */
 void lk_tree_free(struct lk_tree *tree) {
     if (tree == NULL || tree->head == NULL)
         return;
@@ -105,6 +129,23 @@ static lk_result put_word_to_list(struct lk_leaf *leaf, const struct lk_word *wo
     return LK_OK;
 }
 
+/**
+ * Adds a new word to suffix tree. Empty words are not added to the tree.
+ *
+ * @param[in] tree is a intialized suffix tree
+ * @param[in] path is a new word (UTF8 string) to insert to a tree
+ * @param[in] word is a pointer to a struct that associated with the path. If
+ *  the same pointer is already associated with the path then the function does
+ *  nothing
+ *
+ * @return the result of operation:
+ *  LK_INVALID_ARG - tree is not initialized or any argument is NULL
+ *  LK_INVALID_STRING - path is not UTF8 string
+ *  LK_OUT_OF_MEMORY - failed to allocated memory for new data
+ *  LK_OK - the word was successfully added to the tree
+ *   or it was skipped because it has been added earlier
+ *   or the path was empty
+ */
 lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct lk_word *word) {
     if (tree == NULL || path == NULL || word == NULL)
         return LK_INVALID_ARG;
@@ -152,6 +193,13 @@ lk_result lk_tree_add_word(struct lk_tree *tree, const char *path, const struct 
     return put_word_to_list(prev_leaf, word);
 }
 
+/**
+ * Looks for a word in the tree and returns the link to list of structs
+ *  associated with the word. Do NOT free the retured list.
+ *
+ *  @returns NULL in case of error or if the path was not found in the tree.
+ *   In case of success it returns the list of associated structs
+ */
 const struct lk_word_ptr* lk_tree_search(const struct lk_tree *tree, const char *path) {
     if (tree == NULL || path == NULL || *path == '\0')
         return NULL;
