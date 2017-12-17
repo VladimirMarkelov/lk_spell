@@ -7,6 +7,9 @@ It kind of works but:
 3. Some function are to be removed - now they exist just for debugging
 
 ### TODO
+- [ ] quote == 8217 & 700
+- [ ] Find an infinitive by any form
+- [ ] Add a auto rule for ending [pi -> pe]
 - [ ] Add at least small dictionary to the library
 - [ ] Add documentation about how to use the library
 - [ ] Test on Linux distribution
