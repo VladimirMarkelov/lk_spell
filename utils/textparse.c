@@ -98,8 +98,8 @@ int main (int argc, char** argv) {
 
 
     char line[LINE_SIZE];
-    char low_line[LINE_SIZE];
     char word[WORD_SIZE];
+    char lowword[WORD_SIZE];
     lk_result res = LK_OK;
 
     while (res == LK_OK) {
@@ -112,14 +112,8 @@ int main (int argc, char** argv) {
             return 0;
         }
 
-        res = lk_to_low_case(line, low_line, LINE_SIZE);
-        if (res != LK_OK) {
-            fprintf(stderr, "Failed to convert test to lowcase: %d [%s]\n", res, line);
-            return 0;
-        }
-
         size_t len = 0;
-        const char *start = low_line;
+        const char *start = line;
         while (start != NULL) {
             size_t tmp = len;
             start = lk_next_word(start, &len);
@@ -134,8 +128,15 @@ int main (int argc, char** argv) {
                 word[len] = '\0';
                 if (lk_vowels_no(word) == 0)
                     fprintf(stderr, "Ivalid word - no vowels; [%s]\n", word);
-                else
-                    printf("%s\n", word);
+                else {
+                    res = lk_to_low_case(word, lowword, LINE_SIZE);
+                    if (res != LK_OK) {
+                        fprintf(stderr, "Failed to convert word to lowcase: %d [%s]\n", res, word);
+                        return 0;
+                    }
+
+                    printf("%s\n", lowword);
+                }
 
                 start += len;
             }

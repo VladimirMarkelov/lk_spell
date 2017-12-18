@@ -290,6 +290,32 @@ int lk_stressed_vowels_no(const char *word) {
 }
 
 /**
+ * Returns the total number of vowels in the word.
+ * May return 0 if the word is not correct UTF8 sequence
+ */
+int lk_vowels_no(const char *word) {
+    if (word == NULL)
+        return 0;
+
+    int cnt = 0;
+    utf8proc_uint8_t *uw = (utf8proc_uint8_t*)word;
+    utf8proc_int32_t cp;
+
+    while (*uw) {
+        size_t len = utf8proc_iterate(uw, -1, &cp);
+        if (cp == -1)
+            return 0;
+
+        if (lk_is_vowel(cp))
+            cnt++;
+
+        uw += len;
+    }
+
+    return cnt;
+}
+
+/**
  * Returns 1 if the word contains only ASCII charactes, and 0 - otherwise
  */
 int lk_is_ascii(const char *word) {
@@ -650,6 +676,8 @@ const char* lk_next_word(const char *str, size_t *len) {
     if (!wstart)
         return NULL;
 
+    if (state == LK_STATE_QUOTE)
+        usrc = save;
     if (len)
         *len = (const char*)usrc - wstart;
 
