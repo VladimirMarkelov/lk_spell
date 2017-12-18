@@ -141,31 +141,6 @@ const char* test_lowcase() {
     return 0;
 }
 
-const char* test_has_ablaut() {
-    char *a[] = {
-        NULL,
-        "á",
-        "can",
-        "caŋ",
-        "čik'alÁ",
-        "čik'alÁŋ",
-        "čik'alÁŊ",
-        "čik'alÍŋ",
-        "čik'alA",
-        "čik'alAŋ",
-        "čik'alAŊ",
-        "čik'alIŋ",
-    };
-    int res[] = {0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0};
-
-    for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
-        int r = lk_has_ablaut(a[i]);
-        ut_assert(a[i], res[i] == r);
-    }
-
-    return 0;
-}
-
 const char* test_is_ascii() {
     char *a[] = {
         NULL,
@@ -201,27 +176,6 @@ const char* test_stressed_no() {
 
     for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
         int r = lk_stressed_vowels_no(a[i]);
-        ut_assert(a[i], res[i] == r);
-    }
-
-    return 0;
-}
-
-const char* test_vowel_no() {
-    char *a[] = {
-        NULL,
-        "á",
-        "a",
-        "c",
-        "čaní",
-        "cáŋúg",
-        "áóíúéŋare",
-        "nothing",
-    };
-    int res[] = {0, 1, 1, 0, 2, 2, 7, 2};
-
-    for (size_t i = 0; i < sizeof(a)/sizeof(a[0]); i++) {
-        int r = lk_vowels_no(a[i]);
         ut_assert(a[i], res[i] == r);
     }
 
@@ -290,54 +244,6 @@ const char* test_destress() {
             ut_assert(a[idx], r == LK_OK && strcmp(dest, b[idx]) == 0);
         }
     }
-
-    return 0;
-}
-
-const char* test_put_stress() {
-    char *a[] = {
-        NULL,
-        "a",
-        "v",
-        "čaŋi",
-        "caŋug",
-        "aoíuéŋ",
-    };
-
-    char dest[64];
-    lk_result r = lk_put_stress(a[3], 1, dest, 1);
-    ut_assert("No room", r == LK_BUFFER_SMALL);
-    r = lk_put_stress(a[0], 1, dest, 64);
-    ut_assert("NULL", r == LK_INVALID_ARG);
-
-    r = lk_put_stress(a[5], 1, dest, 64);
-    ut_assert("long word #1.1", r == LK_OK && strcmp(dest, "aóíuéŋ") == 0);
-    r = lk_put_stress(a[5], 2, dest, 64);
-    ut_assert("long word #1.2", r == LK_OK && strcmp(dest, "aoíuéŋ") == 0);
-    r = lk_put_stress(a[5], 0, dest, 64);
-    ut_assert("long word #1.3", r == LK_OK && strcmp(dest, "áoíuéŋ") == 0);
-    r = lk_put_stress(a[5], 4, dest, 64);
-    ut_assert("long word #1.4", r == LK_OK && strcmp(dest, "aoíuéŋ") == 0);
-
-    r = lk_put_stress(a[4], 1, dest, 64);
-    ut_assert("long word #2.1", r == LK_OK && strcmp(dest, "caŋúg") == 0);
-    r = lk_put_stress(a[4], 2, dest, 64);
-    ut_assert("long word #2.2", r == LK_OK && strcmp(dest, "caŋúg") == 0);
-    r = lk_put_stress(a[4], 0, dest, 64);
-    ut_assert("long word #2.3", r == LK_OK && strcmp(dest, "cáŋug") == 0);
-
-    r = lk_put_stress(a[3], 1, dest, 64);
-    ut_assert("short word #1.1", r == LK_OK && strcmp(dest, "čaŋí") == 0);
-    r = lk_put_stress(a[3], 0, dest, 64);
-    ut_assert("short word #1.2", r == LK_OK && strcmp(dest, "čáŋi") == 0);
-
-    r = lk_put_stress(a[2], 0, dest, 64);
-    ut_assert("no vowel", r == LK_INVALID_ARG);
-
-    r = lk_put_stress(a[1], 1, dest, 64);
-    ut_assert("one vowel", r == LK_OK && strcmp(dest, "á") == 0);
-    r = lk_put_stress(a[1], 0, dest, 64);
-    ut_assert("one vowel", r == LK_OK && strcmp(dest, "á") == 0);
 
     return 0;
 }
@@ -458,13 +364,10 @@ const char * run_all_test() {
     ut_run_test("File read", test_fileread);
 
     ut_run_test("lowcase", test_lowcase);
-    ut_run_test("has ablaut", test_has_ablaut);
     ut_run_test("count stressed", test_stressed_no);
-    ut_run_test("count vowels", test_vowel_no);
     ut_run_test("is ascii", test_is_ascii);
     ut_run_test("to ascii", test_to_ascii);
     ut_run_test("destress", test_destress);
-    ut_run_test("put stress", test_put_stress);
     ut_run_test("remove glottal stop", test_remove_stop);
     ut_run_test("begin of word", test_word_begin);
     ut_run_test("next word", test_next_word);

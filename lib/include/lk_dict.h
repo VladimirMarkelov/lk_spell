@@ -17,7 +17,7 @@ size_t lk_word_count(const struct lk_dictionary *dict);
 
 lk_result lk_parse_word(const char *info, struct lk_dictionary* dict);
 char** lk_dict_exact_lookup(const struct lk_dictionary *dict,
-        const char *word, const char *next_word, int *count);
+        const char *word, int *count);
 void lk_exact_lookup_free(char** lookup);
 
 

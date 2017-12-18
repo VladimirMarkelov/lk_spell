@@ -12,9 +12,9 @@ extern "C" {
 #define LK_STRESS_DEFAULT 1
 /**
  * Maximum length of a word in bytes. 64 bytes must be enough but just in case
- *  the library uses 128
+ *  the library uses 64
  */
-#define LK_MAX_WORD_LEN 128
+#define LK_MAX_WORD_LEN 64
 
 /** @enum lk_result
  * Most of the library functions returns lk_result
@@ -32,20 +32,6 @@ typedef enum {
     LK_EXACT_MATCH, /*!< The word was found in the dictionary */
     LK_COMMENT, /*!< The parsed line is a comment and was skipped while processing data */
 } lk_result;
-
-/**
- * @enum lk_word_type
- * Describe type of the word in dictionary. Also affects data parsing.
- * At this moment it is used only to distinguish verbs from other parts of speech.
- */
-typedef enum {
-    LK_STATIC_VERB = 'S', /*!< Stative verb */
-    LK_TRANS_VERB = 'T', /*!< Transitive verb */
-    LK_INTRANS_VERB = 'I', /*!< Intransitive verb */
-    LK_NOUN = 'N', /*!< Noun */
-    LK_ADVERB = 'A', /*!< Adverb */
-    LK_SPEC = '-', /*!< Other parts of speech (prepositions, conjunctions etc) */
-} lk_word_type;
 
 /**
  * @enum lk_ablaut
@@ -89,6 +75,7 @@ typedef enum {
  * Unicode character for glottal stop
  */
 #define LK_QUOTE 700
+#define LK_QUOTE2 8217
 
 #ifdef __cplusplus
 }

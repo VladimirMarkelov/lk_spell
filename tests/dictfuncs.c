@@ -34,26 +34,20 @@ const char* test_parse() {
 
     struct lk_dictionary *dict = lk_dict_init();
 
-    r = lk_parse_word("S lapa milapa nilapa", dict);
+    r = lk_parse_word("lapa milapa nilapa", dict);
     ut_assert("Word #1 parsed", r == LK_OK && lk_word_count(dict) == 3);
-    r = lk_parse_word("#S kin", dict);
+    r = lk_parse_word("# kin", dict);
     ut_assert("Comment parsed", r == LK_COMMENT && lk_word_count(dict) == 3);
-    r = lk_parse_word("- aga", dict);
+    r = lk_parse_word("aga", dict);
     ut_assert("simple service word parsed", r == LK_OK && lk_word_count(dict) == 4);
-    r = lk_parse_word("-:n kin", dict);
+    r = lk_parse_word("kin", dict);
     ut_assert("Ablauting parsed", r == LK_OK && lk_word_count(dict) == 5);
-    r = lk_parse_word("S:sab sapA", dict);
-    ut_assert("Word #2 - with unstressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 9);
-    r = lk_parse_word("S ditÁŋ", dict);
-    ut_assert("Word #3 - witn stressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 13);
-    r = lk_parse_word("S kárAŋ mikárAŋ", dict);
-    ut_assert("Word #4 - unstressed ablaut 2 forms parsed", r == LK_OK && lk_word_count(dict) == 21);
-    r = lk_parse_word("t zeden wa~ ~pi", dict);
-    ut_assert("Word #5 - tilde parsed", r == LK_OK && lk_word_count(dict) == 24);
-    r = lk_parse_word("t zédún wa@pi @s", dict);
-    ut_assert("Word #6 - AT parsed", r == LK_OK && lk_word_count(dict) == 27);
-    r = lk_parse_word("t uya wa\% \%pi ~e", dict);
-    ut_assert("Word #7 - percent parsed", r == LK_OK && lk_word_count(dict) == 31);
+    r = lk_parse_word("sapA", dict);
+    ut_assert("Word #2 - with unstressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 6);
+    r = lk_parse_word("ditÁŋ", dict);
+    ut_assert("Word #3 - witn stressed ablaut parsed", r == LK_OK && lk_word_count(dict) == 7);
+    r = lk_parse_word("kárAŋ mikárAŋ", dict);
+    ut_assert("Word #4 - unstressed ablaut 2 forms parsed", r == LK_OK && lk_word_count(dict) == 9);
 
     lk_dict_close(dict);
 
@@ -62,47 +56,28 @@ const char* test_parse() {
 
 const char* test_search() {
     struct lk_dictionary *dict = lk_dict_init();
-    lk_parse_word("S lapa milapa nilapa", dict);
-    lk_parse_word("-:n ktA", dict);
-    lk_parse_word("t zédún wa@pi @s", dict);
-    lk_parse_word("t uya wa\% \%pi ~e", dict);
-    lk_parse_word("S sápA ma~ sapápi kuni@", dict);
-    lk_parse_word("-:a he", dict);
+    lk_parse_word("ktA", dict);
+    lk_parse_word("lapa milapa nilapa", dict);
+    lk_parse_word("kiŋ", dict);
+    lk_parse_word("zédún wazédunpi zéduns", dict);
+    lk_parse_word("uya wauya wauyapi uyae", dict);
+    lk_parse_word("sápA masápA sapápi kunísapA", dict);
+    lk_parse_word("he", dict);
 
     const char* words[] = {
         "lapa", "nilapa",
-        "kta", "ktiŋ", "kte",
-        "zédún", "wazédunpi", "zedúns",
+        "kta", "zédún", "wazédunpi", "zéduns",
         "uya", "wauya", "wauyapi", "uyae",
         "sápa", "masápa", "sapápi", "kunísapa",
         "he",
     };
 
     const struct lk_word_ptr* wptr;
-    lk_ablaut ab;
 
     printf("Looking for main words\n");
     for (size_t idx = 0; idx < sizeof(words)/sizeof(words[0]); idx ++) {
         wptr = lk_dict_find_word(dict, words[idx]);
         ut_assert(words[idx],  wptr != NULL);
-    }
-
-    printf("Looking for no ablaut\n");
-    const char* no_ab[] = {
-        "milapa", "uya", "kto",
-    };
-    for (size_t idx = 0; idx < sizeof(no_ab)/sizeof(no_ab[0]); idx ++) {
-        ab = lk_dict_check_ablaut(dict, no_ab[idx]);
-        ut_assert(no_ab[idx], ab == LK_ABLAUT_0);
-    }
-
-    printf("Looking for yes ablaut\n");
-    const char* yes_ab[] = {
-        "kta", "kte", "ktiŋ", "he",
-    };
-    for (size_t idx = 0; idx < sizeof(yes_ab)/sizeof(yes_ab[0]); idx ++) {
-        ab = lk_dict_check_ablaut(dict, yes_ab[idx]);
-        ut_assert(yes_ab[idx], ab == (idx > 2 ? LK_ABLAUT_A : LK_ABLAUT_N));
     }
 
     lk_dict_close(dict);
@@ -112,93 +87,67 @@ const char* test_search() {
 
 const char* test_lookup() {
     struct lk_dictionary *dict = lk_dict_init();
-    lk_parse_word("-:n ktA", dict);
-    lk_parse_word("S lapa milapa nilapa", dict);
-    lk_parse_word("- kiŋ", dict);
-    lk_parse_word("t zédún wa@pi @s", dict);
-    lk_parse_word("t uya wa\% \%pi ~e", dict);
-    lk_parse_word("S sápA ma~ sapápi kuni@", dict);
-    lk_parse_word("-:a he", dict);
-    lk_parse_word("s číkʼalA ma~", dict);
-    lk_parse_word("s kóla makolÁ", dict);
-    lk_parse_word("s kolá mákʼólA", dict);
+    lk_parse_word("kta", dict);
+    lk_parse_word("lapa milapa nilapa", dict);
+    lk_parse_word("kiŋ", dict);
+    lk_parse_word("zédún wazédunpi wazédunpis", dict);
+    lk_parse_word("uya wauya wauyapi uyae", dict);
+    lk_parse_word("sápa masápa sapápi kunísapa", dict);
+    lk_parse_word("he", dict);
+    lk_parse_word("číkʼalA mačíkʼala", dict);
+    lk_parse_word("kóla makolá", dict);
+    lk_parse_word("kolá mákʼóla", dict);
 
     int cnt = 0;
     char **lookup;
 
-    lookup = lk_dict_exact_lookup(dict, "kiŋg", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "kiŋg", &cnt);
     ut_assert("Non-existent word", cnt == -LK_WORD_NOT_FOUND && lookup == NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "kiŋ", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "kiŋ", &cnt);
     ut_assert("Exact match", cnt == 0 && lookup == NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "kte", NULL, &cnt);
-    ut_assert("Exact match ablauted form", cnt == 0 && lookup == NULL);
+    lookup = lk_dict_exact_lookup(dict, "kunisapa", &cnt);
+    printf("-> %s\n",lookup[0]);
+    ut_assert("Ascii match #2", cnt == 1 && lookup != NULL && strcmp(lookup[0], "kunísapa") == 0);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "ktin", NULL, &cnt);
-    ut_assert("Ascii match #1", cnt == 1 && lookup != NULL && strcmp(lookup[0], "ktiŋ") == 0);
-    lk_exact_lookup_free(lookup);
-
-    lookup = lk_dict_exact_lookup(dict, "kunisape", NULL, &cnt);
-    ut_assert("Ascii match #2", cnt == 1 && lookup != NULL && strcmp(lookup[0], "kunísape") == 0);
-    lk_exact_lookup_free(lookup);
-
-    lookup = lk_dict_exact_lookup(dict, "zedun", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "zedun", &cnt);
     ut_assert("Ascii match #3", cnt == 1 && lookup != NULL && strcmp(lookup[0], "zédún") == 0);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "sapá", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "sapá", &cnt);
     ut_assert("Incorrect stress #1", cnt == 1 && lookup != NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "zédun", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "zédun", &cnt);
     ut_assert("Incorrect stress #2", cnt == 1 && lookup != NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "sápa", ".", &cnt);
-    ut_assert("Incorrect ablaut form #1", cnt == 2 && lookup != NULL
-            && strcmp(lookup[0], "-") == 0
-            && strcmp(lookup[1], "sápe") == 0);
-    lk_exact_lookup_free(lookup);
-
-    lookup = lk_dict_exact_lookup(dict, "sapá", ".", &cnt);
-    ut_assert("Incorrect ablaut and stress form #1", cnt == 3 && lookup != NULL
-            && strcmp(lookup[1], "-") == 0
-            && strcmp(lookup[2], "sápe") == 0
-            && strcmp(lookup[0], "sápa") == 0);
-    lk_exact_lookup_free(lookup);
-
     /* test apostrophes */
-    lookup = lk_dict_exact_lookup(dict, "mačíkʼala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "mačíkʼala", &cnt);
     ut_assert("Glottal #1", cnt == 0 && lookup == NULL);
     lk_exact_lookup_free(lookup);
-    lookup = lk_dict_exact_lookup(dict, "mačík'ala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "mačík'ala", &cnt);
     ut_assert("Glottal #2", cnt == 1 && lookup != NULL && strcmp(lookup[0], "mačíkʼala") == 0);
     lk_exact_lookup_free(lookup);
-    lookup = lk_dict_exact_lookup(dict, "mačík`ala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "mačík`ala", &cnt);
     ut_assert("Glottal #3", cnt == 1 && lookup != NULL && strcmp(lookup[0], "mačíkʼala") == 0);
     lk_exact_lookup_free(lookup);
-    lookup = lk_dict_exact_lookup(dict, "mačíkala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "mačíkala", &cnt);
     ut_assert("Glottal #4", cnt == 1 && lookup != NULL && strcmp(lookup[0], "mačíkʼala") == 0);
     lk_exact_lookup_free(lookup);
-    lookup = lk_dict_exact_lookup(dict, "macikala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "macikala", &cnt);
     ut_assert("Glottal #5", cnt == 1 && lookup != NULL && strcmp(lookup[0], "mačíkʼala") == 0);
     lk_exact_lookup_free(lookup);
 
     /* test multi-fit */
-    lookup = lk_dict_exact_lookup(dict, "kola", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "kola", &cnt);
     ut_assert("Multifit #1", cnt == 2 && lookup != NULL && (
                 ( strcmp(lookup[0], "kóla") == 0 && strcmp(lookup[1], "kolá") == 0) ||
                 ( strcmp(lookup[1], "kóla") == 0 && strcmp(lookup[0], "kolá") == 0)
-                ));
-    lk_exact_lookup_free(lookup);
-    lookup = lk_dict_exact_lookup(dict, "makolin", NULL, &cnt);
-    ut_assert("Multifit #2", cnt == 2 && lookup != NULL && (
-                ( strcmp(lookup[0], "makolíŋ") == 0 && strcmp(lookup[1], "mákʼóliŋ") == 0) ||
-                ( strcmp(lookup[1], "makolíŋ") == 0 && strcmp(lookup[0], "mákʼóliŋ") == 0)
                 ));
     lk_exact_lookup_free(lookup);
 
@@ -211,41 +160,42 @@ const char* test_dict_load() {
     FILE *f = fopen("lk.dict", "wb");
     ut_assert("File created", f != 0);
 
-    fputs("-:n ktA\n", f);
-    fputs("S lapa milapa nilapa\n", f);
-    fputs("- kiŋ\n", f);
-    fputs("t zédún wa@pi @s\n", f);
-    fputs("t uya wa\% \%pi ~e\n", f);
-    fputs("S sápA ma~ sapápi kuni@\n", f);
-    fputs("-:a he\n", f);
-    fputs("s číkʼalA ma~\n", f);
-    fputs("s kóla makolÁ\n", f);
-    fputs("s kolá mákʼólA\n", f);
+    fputs("kta\n", f);
+    fputs("lapa milapa nilapa\n", f);
+    fputs("kiŋ\n", f);
+    fputs("zédún wazédunpi wazédunpis\n", f);
+    fputs("uya wauya wauyapi uyae\n", f);
+    fputs("sápa masápa sapápi kunísapa\n", f);
+    fputs("he\n", f);
+    fputs("číkʼalA mačíkʼala\n", f);
+    fputs("kóla makolá\n", f);
+    fputs("kolá mákʼóla\n", f);
     fclose(f);
 
     struct lk_dictionary *dict = lk_dict_init();
     lk_result r = lk_read_dictionary(dict, "lk.dict");
-    ut_assert("Reading dictionary", r == LK_OK);
+    ut_assert("Reading dictionary", r == LK_OK && lk_word_count(dict) > 0);
 
     int cnt = 0;
     char **lookup;
 
-    lookup = lk_dict_exact_lookup(dict, "kunisape", NULL, &cnt);
-    ut_assert("Ascii match", cnt == 1 && lookup != NULL && strcmp(lookup[0], "kunísape") == 0);
+    lookup = lk_dict_exact_lookup(dict, "kunisapa", &cnt);
+    ut_assert("Ascii match", cnt == 1 && lookup != NULL && strcmp(lookup[0], "kunísapa") == 0);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "zédun", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "zédun", &cnt);
     ut_assert("Incorrect stress", cnt == 1 && lookup != NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "mačíkʼala", NULL, &cnt);
+    lookup = lk_dict_exact_lookup(dict, "mačíkʼala", &cnt);
     ut_assert("Glottal", cnt == 0 && lookup == NULL);
     lk_exact_lookup_free(lookup);
 
-    lookup = lk_dict_exact_lookup(dict, "makolin", NULL, &cnt);
+    /* test multi-fit */
+    lookup = lk_dict_exact_lookup(dict, "kola", &cnt);
     ut_assert("Multifit", cnt == 2 && lookup != NULL && (
-                ( strcmp(lookup[0], "makolíŋ") == 0 && strcmp(lookup[1], "mákʼóliŋ") == 0) ||
-                ( strcmp(lookup[1], "makolíŋ") == 0 && strcmp(lookup[0], "mákʼóliŋ") == 0)
+                ( strcmp(lookup[0], "kóla") == 0 && strcmp(lookup[1], "kolá") == 0) ||
+                ( strcmp(lookup[1], "kóla") == 0 && strcmp(lookup[0], "kolá") == 0)
                 ));
     lk_exact_lookup_free(lookup);
 

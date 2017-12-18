@@ -78,13 +78,22 @@ static int lk_is_vowel(utf8proc_uint32_t cp) {
     return lk_is_unstressed_vowel(cp) || lk_is_stressed_vowel(cp);
 }
 
+static int lk_is_lakota_quote(utf8proc_uint32_t c) {
+    return c == LK_QUOTE   /* NLD & NLDO */
+        || c == LK_QUOTE2; /* some web-sites */
+}
+
+static int lk_is_quote(utf8proc_uint32_t c) {
+    return c == '\'' || c == '`' || lk_is_lakota_quote(c);
+}
+
 static int lk_is_glottal_stop(utf8proc_uint32_t cp) {
-    return (cp == LK_QUOTE || cp == '\'' || cp == '`');
+    return lk_is_quote(cp);
 }
 
 /* remove diacritic mark from a letter */
 static utf8proc_uint32_t lk_char_to_ascii(utf8proc_uint32_t cp) {
-    if (cp == '`' || cp == LK_QUOTE)
+    if (lk_is_quote(cp))
         return '\'';
 
     for (size_t idx = 0; idx < sizeof(lk_low_case)/sizeof(lk_low_case[0]); idx++) {
@@ -92,23 +101,6 @@ static utf8proc_uint32_t lk_char_to_ascii(utf8proc_uint32_t cp) {
             return lk_low_ascii[idx];
     }
 
-    return cp;
-}
-
-/* add diacritic mark to a vowel */
-static utf8proc_uint32_t lk_unstress_to_stress(utf8proc_uint32_t cp) {
-    switch (cp) {
-        case 'a':
-            return LK_A_LOW;
-        case 'e':
-            return LK_E_LOW;
-        case 'i':
-            return LK_I_LOW;
-        case 'o':
-            return LK_O_LOW;
-        case 'u':
-            return LK_U_LOW;
-    }
     return cp;
 }
 
@@ -218,7 +210,7 @@ static lk_result fix_glottal_stop(const char *word, char *out, size_t out_sz) {
         if (cp == -1)
             return LK_INVALID_STRING;
 
-        if (cp == '\'' || cp == '`')
+        if (cp == '\'' || cp == '`' || cp == LK_QUOTE2)
             cp = LK_QUOTE;
 
         usrc += len;
@@ -272,38 +264,6 @@ lk_result lk_to_low_case(const char *word, char *out, size_t out_sz) {
 }
 
 /**
- * Returns 1 if the word ends with ablaut, 0 - otherwise
- */
-int lk_has_ablaut(const char *word) {
-    if (word == NULL)
-        return 0;
-
-    if (lk_ends_with(word, "A")
-        || lk_ends_with(word, "Aŋ")
-        || lk_ends_with(word, "Á")
-        || lk_ends_with(word, "Áŋ")
-        )
-        return 1;
-
-    return 0;
-}
-
-/**
- * Returns 1 if the word ends with ablaut and it is stressed, 0 - otherwise
- */
-int lk_is_ablaut_stressed(const char *word) {
-    if (word == NULL)
-        return 0;
-
-    if (lk_ends_with(word, "Á")
-        || lk_ends_with(word, "Áŋ")
-        )
-        return 1;
-
-    return 0;
-}
-
-/**
  * Returns the number of stressed vowels in the word.
  * May return 0 if the word is not correct UTF8 sequence
  */
@@ -321,32 +281,6 @@ int lk_stressed_vowels_no(const char *word) {
             return 0;
 
         if (lk_is_stressed_vowel(cp))
-            cnt++;
-
-        uw += len;
-    }
-
-    return cnt;
-}
-
-/**
- * Returns the total number of vowels in the word.
- * May return 0 if the word is not correct UTF8 sequence
- */
-int lk_vowels_no(const char *word) {
-    if (word == NULL)
-        return 0;
-
-    int cnt = 0;
-    utf8proc_uint8_t *uw = (utf8proc_uint8_t*)word;
-    utf8proc_int32_t cp;
-
-    while (*uw) {
-        size_t len = utf8proc_iterate(uw, -1, &cp);
-        if (cp == -1)
-            return 0;
-
-        if (lk_is_vowel(cp))
             cnt++;
 
         uw += len;
@@ -460,68 +394,6 @@ lk_result lk_destress(const char *word, char *out, size_t out_sz) {
 }
 
 /**
- * Put stress on a vowel in the string
- *
- * @param[in] word the original string
- * @param[in] pos the ordinal number of the vowel to put stress (count starts
- *  from 0). If pos is negative then the default position is used (see,
- *  define LK_STRESS_DEFAULT). If pos is greater than the number of vowel then
- *  the latest gets stressed
- *
- * @return the result of operation:
- *  LK_OK - the stress put successfully
- *  LK_INVALID_ARG - either word or out is NULL, or pos greater than 10 or
- *   out equals word, or the word does not contain any vowel
- *  LK_BUFFER_SMALL - the output buffer is too small to keep a new string
- *  LK_INVALID_STRING - the string is not valid UTF8 sequence
- */
-lk_result lk_put_stress(const char *word, int pos, char *out, size_t out_sz) {
-    if (word == NULL || out == NULL || pos > 10 || word == out)
-        return LK_INVALID_ARG;
-    if (out_sz == 0)
-        return LK_BUFFER_SMALL;
-
-    int vcnt = lk_vowels_no(word);
-    if (vcnt == 0)
-        return LK_INVALID_ARG;
-
-    if (pos >= vcnt)
-        pos = vcnt - 1;
-    if (pos < 0)
-        pos = LK_STRESS_DEFAULT;
-
-    utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)word;
-    utf8proc_uint8_t *udst = (utf8proc_uint8_t*)out;
-    utf8proc_int32_t cp;
-
-    while (*usrc) {
-        size_t len = utf8proc_iterate(usrc, -1, &cp);
-
-        if (cp == -1) {
-            return LK_INVALID_STRING;
-        }
-
-        if (pos >= 0 && lk_is_vowel(cp)) {
-            if (pos == 0)
-                cp = lk_unstress_to_stress(cp);
-            pos--;
-        }
-
-        usrc += len;
-        size_t l = cp_length(cp);
-        if (out_sz <= l)
-            return LK_BUFFER_SMALL;
-
-        len = utf8proc_encode_char(cp, udst);
-        udst += len;
-        out_sz -= len;
-    }
-
-    *udst = '\0';
-    return pos < 0 ? LK_OK : LK_INVALID_ARG;
-}
-
-/**
  * Removes all glotal stops from the string. Glottal stop is one of LK_QUOTE,
  *  single quote mark or apostroph
  *
@@ -581,7 +453,9 @@ int lk_has_glottal_stop(const char *word) {
 }
 
 static int is_lk_char(utf8proc_uint32_t c) {
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == LK_QUOTE)
+    if ((c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || c == LK_QUOTE || c == LK_QUOTE2)
         return 1;
 
     size_t sz = sizeof(lk_low_case) / sizeof(lk_low_case[0]);
