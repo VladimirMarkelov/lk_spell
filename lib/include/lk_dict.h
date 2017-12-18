@@ -22,7 +22,6 @@ void lk_exact_lookup_free(char** lookup);
 
 
 const struct lk_word_ptr* lk_dict_find_word(const struct lk_dictionary *dict, const char *word);
-lk_ablaut lk_dict_check_ablaut(const struct lk_dictionary *dict, const char *word);
 
 #ifdef __cplusplus
 }

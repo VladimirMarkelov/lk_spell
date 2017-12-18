@@ -34,17 +34,6 @@ typedef enum {
 } lk_result;
 
 /**
- * @enum lk_ablaut
- * Type of ablaut the word follows
- */
-typedef enum {
-    LK_ABLAUT_0,
-    LK_ABLAUT_A,
-    LK_ABLAUT_E,
-    LK_ABLAUT_N,
-} lk_ablaut;
-
-/**
  * Predefined constants of UNICODE characters used in the language.
  * It is standard Latin letters with diacritic marks
  */
