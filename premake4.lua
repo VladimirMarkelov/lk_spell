@@ -4,3 +4,4 @@ solution "words"
 
 include "./lib"
 include "./tests"
+include "./utils"

@@ -21,6 +21,8 @@ struct lk_file {
     size_t len;/*!< current length of the buffer */
     size_t cap;/*!< current buffer capacity */
     size_t pos;/*!< position in the buffer */
+    int bom_checked; /*!< false until the first file read and skipping the first
+                       bytes that are BOM (if any exists) */
 };
 
 /**
@@ -51,6 +53,7 @@ struct lk_file* lk_file_open(const char* path) {
     f->pos = 0;
     f->cap = LK_BUFFER_SIZE;
     f->len = 0;
+    f->bom_checked = 0;
 #ifdef _WIN32
     wchar_t *wpath;
     int bufsz;
@@ -129,6 +132,16 @@ static lk_result lk_read_block(struct lk_file *file) {
     return LK_OK;
 }
 
+static void lk_skip_bom(struct lk_file *file) {
+    file->bom_checked = 1;
+
+    if (file->len < 3)
+        return;
+
+    if (file->buffer[0] == 0xEF && file->buffer[1] == 0xBB && file->buffer[2] == 0xBF)
+        file->pos = 3;
+}
+
 /**
  * Reads the next string from the file. It is OK to read beyond the end of file.
  *  in this case the function returns LK_EOF and the buffer has zero length.
@@ -173,6 +186,10 @@ lk_result lk_file_read(struct lk_file *file, char *buffer, size_t buf_size) {
         return LK_EOF;
 
     char *b = buffer;
+
+    if (!file->bom_checked && file->pos == 0)
+        lk_skip_bom(file);
+
     while (buf_size > 0) {
         char c = file->buffer[file->pos];
         if (c == '\n' || c == '\r') {
