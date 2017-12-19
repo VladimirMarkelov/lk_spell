@@ -169,8 +169,11 @@ int main (int argc, char** argv) {
                     return 0;
                 }
 
-                if (lk_vowels_no(lowword) == 0)
-                    fprintf(stderr, "Ivalid word - no vowels: [%s]\n", word);
+                int vowcnt = lk_vowels_no(lowword);
+                int vowstr = lk_stressed_vowels_no(lowword);
+
+                if (vowcnt == 0 || (vowcnt > 1 && vowstr == 0))
+                    fprintf(stderr, "Invalid word - no vowels: [%s]\n", word);
                 else {
 
                     /* printf("%s\n", lowword); */
