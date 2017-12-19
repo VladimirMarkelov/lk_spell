@@ -47,23 +47,6 @@ struct lk_word_form {
     struct lk_word_form *next;
 };
 
-static void lk_copy_word_base(const char *word, char *out) {
-    utf8proc_uint8_t *usrc = (utf8proc_uint8_t*)word;
-    utf8proc_uint8_t *udst = (utf8proc_uint8_t*)out;
-    utf8proc_int32_t cp;
-
-    while (*usrc) {
-        size_t len = utf8proc_iterate(usrc, -1, &cp);
-        usrc += len;
-        if (cp == 'A' || cp == LK_A_UP)
-            break;
-
-        len = utf8proc_encode_char(cp, udst);
-        udst += len;
-    }
-    *udst = '\0';
-}
-
 /**
  * Lookup the word in a dictionary and returns th elist of all possible words
  *  that can replace the original one if it is incorrect
@@ -350,8 +333,6 @@ static lk_result generate_ascii_forms(struct lk_tree *tree, const char *word, co
 }
 
 static lk_result add_word_ascii_forms(struct lk_tree *tree, const struct lk_word *base) {
-    static char buf[LK_MAX_WORD_LEN], tmp[LK_MAX_WORD_LEN];
-
     /* add the word */
     const char *base_word = base->word;
     lk_result res = lk_tree_add_word(tree, base_word, base);
